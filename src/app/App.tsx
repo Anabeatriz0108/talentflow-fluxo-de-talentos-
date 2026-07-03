@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { Toaster, toast } from "sonner";
 import {
   LayoutDashboard, Users, UserPlus, Award, Star, Target, Kanban,
@@ -49,6 +49,18 @@ type Certificate = { id: number; employee: string; course: string; issuedAt: str
 type Notification = { id: number; text: string; time: string; read: boolean; type: string };
 type AppSettings = { theme: string; language: string; notifications: boolean; emailNotif: boolean; smsNotif: boolean };
 type AdminUser = { id: number; name: string; email: string; role: string; active: boolean; lastLogin: string };
+type RecruitmentVacancy = {
+  id: number;
+  title: string;
+  dept: string;
+  candidates: number;
+  status: string;
+  priority: string;
+  description: string;
+  applicants: { id: number; name: string; stage: string; score: number }[];
+};
+type RecruitmentVacancySetter = (value: RecruitmentVacancy[] | ((prev: RecruitmentVacancy[]) => RecruitmentVacancy[])) => void;
+type DashboardPeriod = "mensal" | "trimestral" | "anual";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const DEPTS = ["Engenharia", "Produto", "Comercial", "RH", "Design", "Analytics", "Financeiro", "Operações", "Jurídico"];
@@ -73,6 +85,58 @@ const BENEFIT_LABELS: Record<string, string> = {
   vt: "Vale Transporte", planoSaude: "Plano de Saúde", planoDental: "Plano Odontológico",
   vr: "Vale Refeição", va: "Vale Alimentação", seguro: "Seguro de Vida", previdencia: "Previdência Privada",
 };
+const DASHBOARD_PERIODS: { value: DashboardPeriod; label: string }[] = [
+  { value: "mensal", label: "Mensal" },
+  { value: "trimestral", label: "Trimestral" },
+  { value: "anual", label: "Anual" },
+];
+
+function getPeriodLabel(period: DashboardPeriod) {
+  return DASHBOARD_PERIODS.find(item => item.value === period)?.label || "Mensal";
+}
+
+function parseBrazilDate(value: string) {
+  if (!value) return null;
+  const [day, month, year] = value.split("/").map(part => Number(part));
+  if (!day || !month || !year) return null;
+  return new Date(year, month - 1, day);
+}
+
+function getPeriodBucket(value: string, period: DashboardPeriod) {
+  const date = parseBrazilDate(value);
+  if (!date) return null;
+  if (period === "mensal") return { year: date.getFullYear(), month: date.getMonth() };
+  if (period === "trimestral") return { year: date.getFullYear(), quarter: Math.floor(date.getMonth() / 3) };
+  return { year: date.getFullYear() };
+}
+
+function getMostRecentBucket(employees: Employee[], period: DashboardPeriod) {
+  const buckets = employees.map(employee => getPeriodBucket(employee.admission, period)).filter(Boolean) as Array<Record<string, number>>;
+  if (!buckets.length) return null;
+  return buckets.sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year;
+    if (period === "mensal") return (b.month ?? 0) - (a.month ?? 0);
+    if (period === "trimestral") return (b.quarter ?? 0) - (a.quarter ?? 0);
+    return 0;
+  })[0];
+}
+
+function filterEmployeesByPeriod(employees: Employee[], period: DashboardPeriod) {
+  const fallbackBucket = getMostRecentBucket(employees, period);
+  return employees.filter(employee => {
+    const bucket = getPeriodBucket(employee.admission, period);
+    if (!bucket) return false;
+    if (!fallbackBucket) return true;
+
+    if (period === "mensal") {
+      return bucket.year === fallbackBucket.year && bucket.month === fallbackBucket.month;
+    }
+    if (period === "trimestral") {
+      return bucket.year === fallbackBucket.year && bucket.quarter === fallbackBucket.quarter;
+    }
+    return bucket.year === fallbackBucket.year;
+  });
+}
 
 // ─── Initial Data ─────────────────────────────────────────────────────────────
 const SEED_EMPLOYEES: Employee[] = [
@@ -291,6 +355,60 @@ const navItems = [
   { id: "admin", label: "Administração", icon: Shield, section: "Sistema" },
 ];
 
+const INITIAL_RECRUITMENT_VACANCIES: RecruitmentVacancy[] = [
+  {
+    id: 1,
+    title: "Engenheiro Backend Sênior",
+    dept: "Engenharia",
+    candidates: 3,
+    status: "Aberta",
+    priority: "Alta",
+    description: "Desenvolvimento de APIs escaláveis e arquitetura de microsserviços.",
+    applicants: [
+      { id: 1, name: "Ana Souza", stage: "Entrevista", score: 91 },
+      { id: 2, name: "Bruno Lima", stage: "Triagem", score: 84 },
+      { id: 3, name: "Carla Mendes", stage: "Entrevista", score: 88 },
+    ],
+  },
+  {
+    id: 2,
+    title: "Product Manager",
+    dept: "Produto",
+    candidates: 2,
+    status: "Aberta",
+    priority: "Média",
+    description: "Acompanhamento de roadmap e priorização de entregas com times de produto e engenharia.",
+    applicants: [
+      { id: 4, name: "Davi Rocha", stage: "Entrevista", score: 87 },
+      { id: 5, name: "Elisa Tavares", stage: "Triagem", score: 82 },
+    ],
+  },
+  {
+    id: 3,
+    title: "Data Analyst",
+    dept: "Analytics",
+    candidates: 1,
+    status: "Em Entrevista",
+    priority: "Alta",
+    description: "Análise de métricas e automação de relatórios para negócios.",
+    applicants: [
+      { id: 6, name: "Fernanda Cruz", stage: "Entrevista", score: 90 },
+    ],
+  },
+  {
+    id: 4,
+    title: "UX Researcher",
+    dept: "Design",
+    candidates: 1,
+    status: "Proposta",
+    priority: "Baixa",
+    description: "Pesquisa com usuários e validação de experiência.",
+    applicants: [
+      { id: 7, name: "Guilherme Nunes", stage: "Proposta", score: 86 },
+    ],
+  },
+];
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function useLocalStorage<T>(key: string, initial: T): [T, (v: T | ((prev: T) => T)) => void] {
   const [val, setVal] = useState<T>(() => {
@@ -396,6 +514,40 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
 
 function Spinner() { return <div className="w-4 h-4 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin" />; }
 
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: "primary" | "secondary" | "destructive" | "ghost";
+  size?: "sm" | "md" | "lg";
+  iconOnly?: boolean;
+  children: ReactNode;
+};
+
+function Button({ children, variant = "primary", size = "md", iconOnly = false, className = "", ...props }: ButtonProps) {
+  const variants = {
+    primary: "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm",
+    secondary: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 shadow-sm",
+    destructive: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm",
+    ghost: "border border-transparent bg-transparent text-slate-600 hover:bg-slate-100 active:bg-slate-200 shadow-none",
+  };
+  const sizes = {
+    sm: "h-8 px-3 py-1.5 text-xs",
+    md: "h-10 px-4 py-2 text-sm",
+    lg: "h-11 px-5 py-2.5 text-sm",
+  };
+
+  return (
+    <button
+      {...props}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] ${variants[variant]} ${sizes[size]} ${iconOnly ? "h-9 w-9 p-0" : ""} ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function notifySuccess(message: string) { toast.success(message); }
+function notifyError(message: string) { toast.error(message); }
+function notifyAlert(message: string) { toast.warning(message); }
+
 function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmLabel = "Confirmar", danger = false }: {
   open: boolean; title: string; message: string;
   onConfirm: () => void; onCancel: () => void;
@@ -413,8 +565,8 @@ function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmLabel
           </div>
         </div>
         <div className="flex gap-2 justify-end">
-          <button onClick={onCancel} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-          <button onClick={onConfirm} className={`px-4 py-2 text-sm rounded-lg text-white transition-colors ${danger ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"}`}>{confirmLabel}</button>
+          <Button variant="secondary" size="md" onClick={onCancel}>Cancelar</Button>
+          <Button variant={danger ? "destructive" : "primary"} size="md" onClick={onConfirm}>{confirmLabel}</Button>
         </div>
       </div>
     </div>
@@ -445,7 +597,7 @@ function EmptyState({ icon: Icon, title, desc, action, onAction }: { icon: any; 
       <h3 className="text-sm font-semibold text-slate-700 mb-1">{title}</h3>
       <p className="text-xs text-slate-400 mb-4 max-w-xs">{desc}</p>
       {action && onAction && (
-        <button onClick={onAction} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}>{action}</button>
+        <Button onClick={onAction}>{action}</Button>
       )}
     </div>
   );
@@ -458,6 +610,44 @@ function SkeletonRow() {
         <td key={i} className="px-4 py-3"><div className="h-4 bg-slate-100 rounded animate-pulse" style={{ width: `${60 + i * 10}%` }} /></td>
       ))}
     </tr>
+  );
+}
+
+function CardSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded-xl border border-slate-100 bg-slate-50 p-4 ${className}`}>
+      <div className="h-10 w-10 rounded-lg bg-slate-200 mb-3" />
+      <div className="h-4 w-2/3 bg-slate-200 rounded mb-2" />
+      <div className="h-3 w-full bg-slate-200 rounded mb-2" />
+      <div className="h-3 w-1/2 bg-slate-200 rounded" />
+    </div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-7 w-56 bg-slate-200 rounded animate-pulse" />
+          <div className="h-4 w-80 bg-slate-200 rounded animate-pulse" />
+        </div>
+        <div className="h-10 w-28 bg-slate-200 rounded animate-pulse" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 rounded-xl border border-slate-100 bg-white p-5">
+          <div className="h-4 w-40 bg-slate-200 rounded animate-pulse mb-4" />
+          <div className="h-48 bg-slate-100 rounded animate-pulse" />
+        </div>
+        <div className="rounded-xl border border-slate-100 bg-white p-5">
+          <div className="h-4 w-32 bg-slate-200 rounded animate-pulse mb-4" />
+          <div className="h-36 bg-slate-100 rounded animate-pulse" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -843,19 +1033,50 @@ function Navbar({ active, dark, setDark, notifications, setNotifications, setAct
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 const sparkVals = [62, 68, 65, 72, 70, 78, 74, 81, 79, 85, 88, 90];
 
-function Dashboard({ setActive, employees }: { setActive: (v: string) => void; employees: Employee[] }) {
+function Dashboard({ setActive, employees, period, setPeriod, onKpiClick }: { setActive: (v: string) => void; employees: Employee[]; period: DashboardPeriod; setPeriod: (value: DashboardPeriod) => void; onKpiClick: (nav: string, metric: string, period: DashboardPeriod) => void }) {
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    setLoading(true);
+    const timer = window.setTimeout(() => setLoading(false), 900);
+    return () => window.clearTimeout(timer);
+  }, [employees.length]);
+
   const active = employees.filter(e => e.status === "Ativo").length;
   const total = employees.length;
   const kpis = [
-    { label: "Total Colaboradores", value: String(total), pct: "+1.8%", up: true, icon: Users, color: "#2563EB", bg: "#EFF6FF", nav: "employees" },
-    { label: "Colaboradores Ativos", value: String(active), pct: "+1.5%", up: true, icon: Activity, color: "#16A34A", bg: "#F0FDF4", nav: "employees" },
-    { label: "Taxa de Turnover", value: "3.2%", pct: "-11%", up: false, icon: TrendingDown, color: "#DC2626", bg: "#FEF2F2", nav: "reports" },
-    { label: "Absenteísmo", value: "1.8%", pct: "-10%", up: false, icon: Clock, color: "#D97706", bg: "#FFFBEB", nav: "reports" },
-    { label: "Treinamentos", value: "342", pct: "+15.9%", up: true, icon: BookOpen, color: "#0EA5E9", bg: "#F0F9FF", nav: "training" },
-    { label: "Avaliações Pend.", value: "28", pct: "-30%", up: true, icon: AlertCircle, color: "#8B5CF6", bg: "#FAF5FF", nav: "evaluations" },
-    { label: "Engajamento", value: "87.4%", pct: "+2.5%", up: true, icon: Zap, color: "#2563EB", bg: "#EFF6FF", nav: "analytics" },
-    { label: "Performance Média", value: "91.2", pct: "+3.9%", up: true, icon: Star, color: "#16A34A", bg: "#F0FDF4", nav: "reports" },
+    { label: "Total Colaboradores", value: String(total), pct: "+1.8%", up: true, icon: Users, color: "#2563EB", bg: "#EFF6FF", nav: "employees", metric: "total" },
+    { label: "Colaboradores Ativos", value: String(active), pct: "+1.5%", up: true, icon: Activity, color: "#16A34A", bg: "#F0FDF4", nav: "employees", metric: "ativos" },
+    { label: "Taxa de Turnover", value: "3.2%", pct: "-11%", up: false, icon: TrendingDown, color: "#DC2626", bg: "#FEF2F2", nav: "reports", metric: "turnover" },
+    { label: "Absenteísmo", value: "1.8%", pct: "-10%", up: false, icon: Clock, color: "#D97706", bg: "#FFFBEB", nav: "reports", metric: "absenteismo" },
+    { label: "Treinamentos", value: "342", pct: "+15.9%", up: true, icon: BookOpen, color: "#0EA5E9", bg: "#F0F9FF", nav: "training", metric: "treinamentos" },
+    { label: "Avaliações Pend.", value: "28", pct: "-30%", up: true, icon: AlertCircle, color: "#8B5CF6", bg: "#FAF5FF", nav: "evaluations", metric: "avaliacoes" },
+    { label: "Engajamento", value: "87.4%", pct: "+2.5%", up: true, icon: Zap, color: "#2563EB", bg: "#EFF6FF", nav: "analytics", metric: "engajamento" },
+    { label: "Performance Média", value: "91.2", pct: "+3.9%", up: true, icon: Star, color: "#16A34A", bg: "#F0FDF4", nav: "reports", metric: "performance" },
   ];
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-[1600px]">
+        <DashboardSkeleton />
+      </div>
+    );
+  }
+
+  if (!employees.length) {
+    return (
+      <div className="p-6 max-w-[1600px]">
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          <EmptyState
+            icon={Users}
+            title="Ainda não há colaboradores cadastrados"
+            desc="Comece adicionando o primeiro colaborador para ativar o dashboard e os indicadores de RH."
+            action="Cadastrar colaborador"
+            onAction={() => setActive("employees")}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px]">
@@ -864,14 +1085,20 @@ function Dashboard({ setActive, employees }: { setActive: (v: string) => void; e
           <h1 className="text-2xl font-bold text-slate-900">Dashboard Executivo</h1>
           <p className="text-sm text-slate-500 mt-0.5">Visão geral do capital humano · {new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => { toast.success("Dados atualizados"); }} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+            {DASHBOARD_PERIODS.map(option => (
+              <button key={option.value} onClick={() => setPeriod(option.value)} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${period === option.value ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <Button variant="secondary" onClick={() => { toast.success("Dados atualizados"); }}>
             <RefreshCw size={14} />Atualizar
-          </button>
-          <button onClick={() => { downloadCSV(employees.map(e => ({ Nome: e.name, Cargo: e.role, Dept: e.dept, Status: e.status })), "dashboard-export.csv"); }}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}>
+          </Button>
+          <Button onClick={() => { downloadCSV(employees.map(e => ({ Nome: e.name, Cargo: e.role, Dept: e.dept, Status: e.status })), "dashboard-export.csv"); }}>
             <Download size={14} />Exportar
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -880,7 +1107,7 @@ function Dashboard({ setActive, employees }: { setActive: (v: string) => void; e
         {kpis.map((k, i) => {
           const Icon = k.icon;
           return (
-            <button key={i} onClick={() => setActive(k.nav)} className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all text-left group">
+            <button key={i} onClick={() => onKpiClick(k.nav, k.metric, period)} className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all text-left group">
               <div className="flex items-start justify-between mb-3">
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: k.bg }}>
                   <Icon size={18} style={{ color: k.color }} />
@@ -1040,7 +1267,7 @@ function EmployeeForm({ initial, onSave, onCancel, onSaveAnother, employees }: {
 
   async function handleSave(another = false) {
     setTouched({ name: true, cpf: true, email: true, dept: true, role: true });
-    if (!validate()) { toast.error("Corrija os erros antes de salvar"); setTab("pessoal"); return; }
+    if (!validate()) { notifyError("Corrija os erros antes de salvar"); setTab("pessoal"); return; }
     setSaving(true);
     await new Promise(r => setTimeout(r, 600));
     setSaving(false);
@@ -1050,7 +1277,7 @@ function EmployeeForm({ initial, onSave, onCancel, onSaveAnother, employees }: {
       avatar: initials(form.name).toUpperCase(),
     };
     onSave(emp);
-    toast.success(isEdit ? `${emp.name} atualizado com sucesso` : `${emp.name} cadastrado com sucesso`);
+    notifySuccess(isEdit ? `${emp.name} atualizado com sucesso` : `${emp.name} cadastrado com sucesso`);
     if (another && onSaveAnother) onSaveAnother();
   }
 
@@ -1246,18 +1473,17 @@ function EmployeeForm({ initial, onSave, onCancel, onSaveAnother, employees }: {
         </div>
 
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-          <button onClick={onCancel} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors">Cancelar</button>
+          <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
           <div className="flex gap-2">
             {!isEdit && onSaveAnother && (
-              <button onClick={() => handleSave(true)} disabled={saving} className="px-4 py-2 text-sm text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
+              <Button variant="secondary" onClick={() => handleSave(true)} disabled={saving}>
                 Salvar e cadastrar outro
-              </button>
+              </Button>
             )}
-            <button onClick={() => handleSave()} disabled={saving}
-              className="flex items-center gap-2 px-5 py-2 text-sm text-white rounded-lg transition-colors disabled:opacity-70" style={{ background: "#2563EB" }}>
+            <Button onClick={() => handleSave()} disabled={saving}>
               {saving ? <Spinner /> : <Save size={14} />}
               {saving ? "Salvando..." : isEdit ? "Salvar alterações" : "Cadastrar"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -1266,20 +1492,27 @@ function EmployeeForm({ initial, onSave, onCancel, onSaveAnother, employees }: {
 }
 
 // ─── Employees Table ──────────────────────────────────────────────────────────
-function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, onNew, onEdit }: {
+function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, onNew, onEdit, period, setPeriod }: {
   employees: Employee[]; setEmployees: (e: Employee[] | ((p: Employee[]) => Employee[])) => void;
   setActive: (v: string) => void; onSelectProfile: (e: Employee) => void;
-  onNew: () => void; onEdit: (e: Employee) => void;
+  onNew: () => void; onEdit: (e: Employee) => void; period: DashboardPeriod; setPeriod: (value: DashboardPeriod) => void;
 }) {
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState("Todos");
   const [status, setStatus] = useState("Todos");
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [confirmDel, setConfirmDel] = useState<Employee | null>(null);
   const perPage = 5;
 
-  const filtered = employees.filter(e => {
+  useEffect(() => {
+    setLoading(true);
+    const timer = window.setTimeout(() => setLoading(false), 800);
+    return () => window.clearTimeout(timer);
+  }, [employees.length]);
+
+  const periodFilteredEmployees = filterEmployeesByPeriod(employees, period);
+  const filtered = periodFilteredEmployees.filter(e => {
     const q = search.toLowerCase();
     return (e.name.toLowerCase().includes(q) || e.role.toLowerCase().includes(q) || e.email.toLowerCase().includes(q))
       && (dept === "Todos" || e.dept === dept)
@@ -1304,6 +1537,13 @@ function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, on
     downloadCSV(filtered.map(e => ({ Nome: e.name, Cargo: e.role, Departamento: e.dept, Gestor: e.manager, Email: e.email, Telefone: e.mobile, Admissão: e.admission, Status: e.status, Score: e.score })), "colaboradores.csv");
   }
 
+  function clearFilters() {
+    setSearch("");
+    setDept("Todos");
+    setStatus("Todos");
+    setPage(1);
+  }
+
   async function handleImport() {
     await new Promise(r => setTimeout(r, 1200));
     toast.success("Importação concluída: 0 novos registros (arquivo exemplo)");
@@ -1316,16 +1556,16 @@ function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, on
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Colaboradores</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{employees.length} colaboradores · {employees.filter(e => e.status === "Ativo").length} ativos</p>
+          <p className="text-sm text-slate-500 mt-0.5">{periodFilteredEmployees.length} colaboradores em {getPeriodLabel(period).toLowerCase()} · {periodFilteredEmployees.filter(e => e.status === "Ativo").length} ativos</p>
         </div>
         <div className="flex gap-2">
           <label className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
             <Upload size={14} />Importar
             <input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImport} />
           </label>
-          <button onClick={onNew} className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}>
+          <Button onClick={onNew}>
             <Plus size={15} />Novo Colaborador
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -1346,10 +1586,17 @@ function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, on
               <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
           ))}
-          <div className="ml-auto">
-            <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+          <div className="ml-auto flex items-center gap-2">
+            <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+              {DASHBOARD_PERIODS.map(option => (
+                <button key={option.value} onClick={() => setPeriod(option.value)} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${period === option.value ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <Button variant="secondary" onClick={handleExport}>
               <Download size={14} />Exportar CSV
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -1365,7 +1612,7 @@ function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, on
           </thead>
           <tbody>
             {loading ? [...Array(perPage)].map((_, i) => <SkeletonRow key={i} />) : shown.length === 0 ? (
-              <tr><td colSpan={7} className="py-1"><EmptyState icon={Users} title="Nenhum colaborador encontrado" desc="Tente ajustar os filtros ou adicione um novo colaborador." action="Novo Colaborador" onAction={onNew} /></td></tr>
+              <tr><td colSpan={7} className="py-1"><EmptyState icon={Users} title={employees.length === 0 ? "Ainda não há colaboradores cadastrados" : "Nenhum colaborador atende aos filtros"} desc={employees.length === 0 ? "Cadastre o primeiro colaborador para começar a acompanhar a equipe." : "Ajuste a busca ou limpe os filtros para encontrar mais resultados."} action={employees.length === 0 ? "Novo Colaborador" : "Limpar filtros"} onAction={employees.length === 0 ? onNew : clearFilters} /></td></tr>
             ) : shown.map(e => (
               <tr key={e.id} className="border-b border-slate-50 hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => onSelectProfile(e)}>
                 <td className="px-4 py-3">
@@ -1468,6 +1715,20 @@ function EmployeeProfile({ employee: initial, employees, setEmployees, onBack, o
   }
 
   const isInactive = employee.status === "Inativo";
+  const historyItems = [
+    { label: "Admissão", value: employee.admission, detail: `Entrada em ${employee.company}` },
+    { label: "Cargo atual", value: employee.role, detail: `${employee.dept} · ${employee.manager || "Sem gestor definido"}` },
+    { label: "Modelo de trabalho", value: employee.workModel, detail: `${employee.contractType} · ${employee.workHours}` },
+    { label: "Última atualização", value: "Hoje", detail: employee.status === "Ativo" ? "Perfil ativo e alinhado ao plano atual" : "Status revisado recentemente" },
+  ];
+  const statusInfo: Record<string, { tone: string; text: string }> = {
+    Ativo: { tone: "success", text: "Colaborador em jornada regular e com performance alinhada ao plano atual." },
+    Férias: { tone: "info", text: "Colaborador em período de férias, com retomada prevista para o próximo ciclo." },
+    Afastado: { tone: "warning", text: "Colaborador em afastamento, com acompanhamento e comunicação em andamento." },
+    Inativo: { tone: "error", text: "Colaborador desligado da organização ou fora do time ativo." },
+  };
+  const [evaluations] = useLocalStorage<Evaluation[]>("evaluations", SEED_EVALUATIONS);
+  const receivedEvaluations = evaluations.slice(0, 3);
 
   return (
     <div className="p-6 max-w-[1400px]">
@@ -1496,12 +1757,12 @@ function EmployeeProfile({ employee: initial, employees, setEmployees, onBack, o
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={onEdit} className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors font-medium flex items-center gap-1.5"><Edit2 size={13} />Editar</button>
-            <button onClick={() => { setNewRole(employee.role); setPromoteModal(true); }} className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors font-medium">Promover</button>
-            <button onClick={() => { setNewDept(employee.dept); setTransferModal(true); }} className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors font-medium">Transferir</button>
+            <Button variant="secondary" onClick={onEdit}><Edit2 size={13} />Editar</Button>
+            <Button variant="secondary" onClick={() => { setNewRole(employee.role); setPromoteModal(true); }}>Promover</Button>
+            <Button variant="secondary" onClick={() => { setNewDept(employee.dept); setTransferModal(true); }}>Transferir</Button>
             {isInactive
-              ? <button onClick={reactivate} className="px-3 py-1.5 text-sm border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition-colors font-medium">Reativar</button>
-              : <button onClick={() => setFireModal(true)} className="px-3 py-1.5 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium">Desligar</button>
+              ? <Button variant="secondary" onClick={reactivate} className="border-green-200 text-green-700 hover:bg-green-50">Reativar</Button>
+              : <Button variant="destructive" onClick={() => setFireModal(true)}>Desligar</Button>
             }
           </div>
         </div>
@@ -1521,10 +1782,112 @@ function EmployeeProfile({ employee: initial, employees, setEmployees, onBack, o
       </div>
 
       {tab === "resumo" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 bg-white rounded-xl border border-slate-100 p-5">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4">Performance ao longo do ano</h3>
-            <ResponsiveContainer width="100%" height={180}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-4">
+            <div className="space-y-4">
+              <div className="bg-white rounded-xl border border-slate-100 p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-slate-900">Dados pessoais</h3>
+                  <Badge variant="gray">{employee.accessProfile}</Badge>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-400">Nome social</p>
+                    <p className="font-medium text-slate-800 mt-1">{employee.socialName || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">CPF</p>
+                    <p className="font-medium text-slate-800 mt-1">{employee.cpf || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">E-mail</p>
+                    <p className="font-medium text-slate-800 mt-1">{employee.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Telefone</p>
+                    <p className="font-medium text-slate-800 mt-1">{employee.mobile || employee.phone || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Endereço</p>
+                    <p className="font-medium text-slate-800 mt-1">{employee.address || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400">Cidade / Estado</p>
+                    <p className="font-medium text-slate-800 mt-1">{[employee.city, employee.state].filter(Boolean).join(" / ") || "—"}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-slate-100 p-5">
+                <h3 className="text-sm font-semibold text-slate-900 mb-4">Cargo e histórico</h3>
+                <div className="space-y-3">
+                  {historyItems.map(item => (
+                    <div key={item.label} className="flex items-start gap-3 rounded-lg border border-slate-100 p-3">
+                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">{item.label}</p>
+                        <p className="text-sm text-slate-600">{item.value}</p>
+                        <p className="text-xs text-slate-400 mt-1">{item.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-white rounded-xl border border-slate-100 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-900">Status</h3>
+                  <StatusBadge status={employee.status} />
+                </div>
+                <p className="text-sm text-slate-600">{statusInfo[employee.status]?.text || "Status atualizado recentemente."}</p>
+                <div className="mt-4 grid gap-2 text-sm">
+                  <div className="flex items-center justify-between rounded-lg border border-slate-100 p-3">
+                    <span className="text-slate-500">Departamento</span>
+                    <span className="font-medium text-slate-800">{employee.dept}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-slate-100 p-3">
+                    <span className="text-slate-500">Gestor</span>
+                    <span className="font-medium text-slate-800">{employee.manager || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border border-slate-100 p-3">
+                    <span className="text-slate-500">Benefícios</span>
+                    <span className="font-medium text-slate-800">{Object.values(employee.benefits).filter(Boolean).length} ativos</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl border border-slate-100 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-slate-900">Avaliações recebidas</h3>
+                  <Badge variant="primary">{receivedEvaluations.length}</Badge>
+                </div>
+                {receivedEvaluations.length > 0 ? (
+                  <div className="space-y-2">
+                    {receivedEvaluations.map(ev => (
+                      <div key={ev.id} className="rounded-lg border border-slate-100 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-slate-800">{ev.title}</p>
+                          <Badge variant="gray">{ev.type}</Badge>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">{ev.period || "Período não informado"}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">Nenhuma avaliação registrada para este colaborador ainda.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-100 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-slate-900">Performance ao longo do tempo</h3>
+              <Badge variant="success">Score {employee.score}</Badge>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={perf}>
                 <defs><linearGradient id="epg" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563EB" stopOpacity={0.12} /><stop offset="95%" stopColor="#2563EB" stopOpacity={0} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
@@ -1534,20 +1897,6 @@ function EmployeeProfile({ employee: initial, employees, setEmployees, onBack, o
                 <Area type="monotone" dataKey="v" stroke="#2563EB" strokeWidth={2} fill="url(#epg)" dot={false} name="Score" />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
-          <div className="space-y-3">
-            {[
-              { label: "Benefícios ativos", value: Object.values(employee.benefits).filter(Boolean).length + " de " + BENEFIT_KEYS.length },
-              { label: "Departamento", value: employee.dept },
-              { label: "Filial", value: employee.branch },
-              { label: "Centro de Custo", value: employee.costCenter || "—" },
-              { label: "Salário", value: employee.salary ? `R$ ${Number(employee.salary).toLocaleString("pt-BR")}` : "—" },
-            ].map(s => (
-              <div key={s.label} className="bg-white rounded-xl border border-slate-100 p-4">
-                <p className="text-xs text-slate-400">{s.label}</p>
-                <p className="text-sm font-semibold text-slate-900 mt-0.5">{s.value}</p>
-              </div>
-            ))}
           </div>
         </div>
       )}
@@ -1602,8 +1951,8 @@ function EmployeeProfile({ employee: initial, employees, setEmployees, onBack, o
             </div>
           </div>
           <div className="flex gap-2 justify-end pt-2">
-            <button onClick={() => setPromoteModal(false)} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
-            <button onClick={promote} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}>Confirmar Promoção</button>
+            <Button variant="secondary" onClick={() => setPromoteModal(false)}>Cancelar</Button>
+            <Button onClick={promote}>Confirmar Promoção</Button>
           </div>
         </div>
       </Modal>
@@ -1621,8 +1970,8 @@ function EmployeeProfile({ employee: initial, employees, setEmployees, onBack, o
             </div>
           </div>
           <div className="flex gap-2 justify-end pt-2">
-            <button onClick={() => setTransferModal(false)} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
-            <button onClick={transfer} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}>Confirmar Transferência</button>
+            <Button variant="secondary" onClick={() => setTransferModal(false)}>Cancelar</Button>
+            <Button onClick={transfer}>Confirmar Transferência</Button>
           </div>
         </div>
       </Modal>
@@ -1638,8 +1987,8 @@ function EmployeeProfile({ employee: initial, employees, setEmployees, onBack, o
             <textarea value={fireReason} onChange={e => setFireReason(e.target.value)} rows={3} placeholder="Descreva o motivo..." className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/30 resize-none" />
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setFireModal(false)} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
-            <button onClick={fire} className="px-4 py-2 text-sm text-white rounded-lg bg-red-600 hover:bg-red-700 transition-colors">Confirmar Desligamento</button>
+            <Button variant="secondary" onClick={() => setFireModal(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={fire}>Confirmar Desligamento</Button>
           </div>
         </div>
       </Modal>
@@ -2066,14 +2415,15 @@ function CertificatesView({ employees }: { employees: Employee[] }) {
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
-function ReportsView({ employees }: { employees: Employee[] }) {
+function ReportsView({ employees, period, setPeriod }: { employees: Employee[]; period: DashboardPeriod; setPeriod: (value: DashboardPeriod) => void }) {
   const [dept, setDept] = useState("Todos");
   const [status, setStatus] = useState("Todos");
   const [loading, setLoading] = useState(false);
 
   async function refresh() { setLoading(true); await new Promise(r => setTimeout(r, 800)); setLoading(false); toast.success("Dados atualizados"); }
 
-  const filtered = employees.filter(e => (dept === "Todos" || e.dept === dept) && (status === "Todos" || e.status === status));
+  const periodFilteredEmployees = filterEmployeesByPeriod(employees, period);
+  const filtered = periodFilteredEmployees.filter(e => (dept === "Todos" || e.dept === dept) && (status === "Todos" || e.status === status));
 
   function exportCSV() { downloadCSV(filtered.map(e => ({ Nome: e.name, Cargo: e.role, Dept: e.dept, Status: e.status, Score: e.score, Admissão: e.admission })), "relatorio-colaboradores.csv"); }
   function exportPDF() { const w = window.open("", "_blank"); if (!w) return; w.document.write(`<html><head><title>Relatório TalentFlow</title></head><body><h1>TalentFlow — Relatório de Colaboradores</h1><p>Gerado em: ${new Date().toLocaleDateString("pt-BR")}</p><p>Filtros: Departamento: ${dept} | Status: ${status}</p><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:13px"><tr><th>Nome</th><th>Cargo</th><th>Dept.</th><th>Status</th><th>Score</th></tr>${filtered.map(e => `<tr><td>${e.name}</td><td>${e.role}</td><td>${e.dept}</td><td>${e.status}</td><td>${e.score}</td></tr>`).join("")}</table></body></html>`); w.document.close(); w.print(); toast.success("Abrindo visualização de impressão"); }
@@ -2081,8 +2431,15 @@ function ReportsView({ employees }: { employees: Employee[] }) {
   return (
     <div className="p-6 max-w-[1400px]">
       <div className="flex items-center justify-between mb-6">
-        <div><h1 className="text-2xl font-bold text-slate-900">Relatórios</h1><p className="text-sm text-slate-500 mt-0.5">Análises e exportações de dados</p></div>
-        <div className="flex gap-2">
+        <div><h1 className="text-2xl font-bold text-slate-900">Relatórios</h1><p className="text-sm text-slate-500 mt-0.5">Análises e exportações de dados · {getPeriodLabel(period)}</p></div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+            {DASHBOARD_PERIODS.map(option => (
+              <button key={option.value} onClick={() => setPeriod(option.value)} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${period === option.value ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+                {option.label}
+              </button>
+            ))}
+          </div>
           <button onClick={refresh} disabled={loading} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-60">
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />Atualizar
           </button>
@@ -2455,39 +2812,297 @@ function AdminView() {
 }
 
 // ─── Recruitment Placeholder ──────────────────────────────────────────────────
-function RecruitmentView({ onNewEmployee }: { onNewEmployee: () => void }) {
-  const vacancies = [
-    { id: 1, title: "Engenheiro Backend Sênior", dept: "Engenharia", candidates: 12, status: "Aberta", priority: "Alta" },
-    { id: 2, title: "Product Manager", dept: "Produto", candidates: 7, status: "Aberta", priority: "Média" },
-    { id: 3, title: "Data Analyst", dept: "Analytics", candidates: 5, status: "Em Entrevista", priority: "Alta" },
-    { id: 4, title: "UX Researcher", dept: "Design", candidates: 3, status: "Proposta", priority: "Baixa" },
-  ];
+function RecruitmentView({ vacancies, setVacancies }: { vacancies: RecruitmentVacancy[]; setVacancies: RecruitmentVacancySetter }) {
+  const pipelineStages = ["Aberta", "Triagem", "Entrevista", "Proposta", "Contratado"];
+
+  const [loading, setLoading] = useState(true);
+  const [selectedVacancyId, setSelectedVacancyId] = useState<number | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [draggedCandidateId, setDraggedCandidateId] = useState<number | null>(null);
+  const [form, setForm] = useState({ title: "", dept: "Engenharia", priority: "Alta", status: "Aberta", description: "" });
+
+  useEffect(() => {
+    setLoading(true);
+    const timer = window.setTimeout(() => setLoading(false), 800);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const selectedVacancy = vacancies.find(v => v.id === selectedVacancyId) ?? null;
+  const openVacanciesCount = vacancies.filter(v => v.status !== "Fechada").length;
+
+  function openVacancyDetails(vacancy: RecruitmentVacancy) {
+    setSelectedVacancyId(vacancy.id);
+    toast.success(`Visualizando candidatos de “${vacancy.title}”`);
+  }
+
+  function closeVacancy(vacancy: RecruitmentVacancy) {
+    if (vacancy.status === "Fechada") {
+      notifyAlert(`A vaga “${vacancy.title}” já está encerrada.`);
+      return;
+    }
+    setVacancies(prev => prev.map(item => item.id === vacancy.id ? { ...item, status: "Fechada" } : item));
+    notifySuccess(`Vaga “${vacancy.title}” encerrada com sucesso`);
+  }
+
+  function moveCandidate(vacancyId: number, candidateId: number, nextStage: string) {
+    if (!candidateId) {
+      notifyAlert("Selecione um candidato antes de mover.");
+      return;
+    }
+    setVacancies(prev => prev.map(vacancy => {
+      if (vacancy.id !== vacancyId) return vacancy;
+
+      const nextApplicants = vacancy.applicants.map(candidate => {
+        if (candidate.id !== candidateId) return candidate;
+        return { ...candidate, stage: nextStage };
+      });
+
+      return { ...vacancy, applicants: nextApplicants, candidates: nextApplicants.length };
+    }));
+    notifySuccess("Candidato movido para a etapa selecionada");
+  }
+
+  function openNewVacancyForm() {
+    setShowForm(true);
+    setForm({ title: "", dept: "Engenharia", priority: "Alta", status: "Aberta", description: "" });
+    notifyAlert("Preencha os dados da nova vaga");
+  }
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+
+    if (!form.title.trim()) {
+      notifyError("Informe o título da vaga");
+      return;
+    }
+
+    const newVacancy: RecruitmentVacancy = {
+      id: Date.now(),
+      title: form.title.trim(),
+      dept: form.dept,
+      candidates: 0,
+      status: form.status,
+      priority: form.priority,
+      description: form.description.trim() || "Nova abertura em processo de contratação.",
+      applicants: [],
+    };
+
+    setVacancies(prev => [newVacancy, ...prev]);
+    setShowForm(false);
+    setSelectedVacancyId(newVacancy.id);
+    notifySuccess(`Vaga “${newVacancy.title}” criada com sucesso`);
+  }
+
+  function cancelNewVacancyForm() {
+    setShowForm(false);
+    notifyAlert("Criação de vaga cancelada");
+  }
+
+  function getStatusVariant(status: string) {
+    if (status === "Fechada") return "gray";
+    if (status === "Em Entrevista") return "warning";
+    if (status === "Proposta") return "success";
+    return "primary";
+  }
+
   return (
     <div className="p-6 max-w-[1200px]">
       <div className="flex items-center justify-between mb-6">
-        <div><h1 className="text-2xl font-bold text-slate-900">Recrutamento</h1><p className="text-sm text-slate-500 mt-0.5">{vacancies.length} vagas abertas</p></div>
-        <button onClick={onNewEmployee} className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}><Plus size={15} />Nova Vaga</button>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Recrutamento</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{openVacanciesCount} vagas abertas</p>
+        </div>
+        <button onClick={openNewVacancyForm} className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}><Plus size={15} />Nova Vaga</button>
       </div>
-      <div className="grid gap-3">
-        {vacancies.map(v => (
-          <div key={v.id} className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-sm transition-shadow flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#EFF6FF" }}><Briefcase size={18} style={{ color: "#2563EB" }} /></div>
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-slate-900">{v.title}</h3>
-              <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
-                <span>{v.dept}</span>
-                <span><Users size={11} className="inline mr-1" />{v.candidates} candidatos</span>
+
+      {loading ? (
+        <div className="grid gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="animate-pulse rounded-xl border border-slate-100 bg-white p-4">
+              <div className="h-4 w-40 bg-slate-200 rounded mb-3" />
+              <div className="h-3 w-24 bg-slate-200 rounded mb-2" />
+              <div className="h-3 w-32 bg-slate-200 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : showForm ? (
+        <div className="bg-white rounded-xl border border-slate-100 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Nova vaga</h2>
+              <p className="text-sm text-slate-500">Cadastre uma nova abertura de contratação</p>
+            </div>
+            <button onClick={cancelNewVacancyForm} className="text-sm text-slate-500 hover:text-slate-700">Cancelar</button>
+          </div>
+          <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+            <label className="text-sm text-slate-600 md:col-span-2">
+              <span className="mb-1 block">Título da vaga</span>
+              <input value={form.title} onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none ring-0 focus:border-blue-500" placeholder="Ex.: Engenheiro Frontend Pleno" />
+            </label>
+            <label className="text-sm text-slate-600">
+              <span className="mb-1 block">Departamento</span>
+              <select value={form.dept} onChange={e => setForm(prev => ({ ...prev, dept: e.target.value }))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500">
+                <option>Engenharia</option>
+                <option>Produto</option>
+                <option>Analytics</option>
+                <option>Design</option>
+                <option>Comercial</option>
+              </select>
+            </label>
+            <label className="text-sm text-slate-600">
+              <span className="mb-1 block">Prioridade</span>
+              <select value={form.priority} onChange={e => setForm(prev => ({ ...prev, priority: e.target.value }))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500">
+                <option>Alta</option>
+                <option>Média</option>
+                <option>Baixa</option>
+              </select>
+            </label>
+            <label className="text-sm text-slate-600">
+              <span className="mb-1 block">Status inicial</span>
+              <select value={form.status} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500">
+                <option>Aberta</option>
+                <option>Em Entrevista</option>
+                <option>Proposta</option>
+              </select>
+            </label>
+            <label className="text-sm text-slate-600 md:col-span-2">
+              <span className="mb-1 block">Descrição</span>
+              <textarea value={form.description} onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))} className="w-full min-h-24 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500" placeholder="Descreva as responsabilidades e requisitos da vaga" />
+            </label>
+            <div className="md:col-span-2 flex justify-end gap-2">
+              <button type="button" onClick={cancelNewVacancyForm} className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">Cancelar</button>
+              <button type="submit" className="px-4 py-2 text-sm rounded-lg text-white" style={{ background: "#2563EB" }}>Salvar vaga</button>
+            </div>
+          </form>
+        </div>
+      ) : selectedVacancy ? (
+        <div className="space-y-4">
+          <button onClick={() => setSelectedVacancyId(null)} className="text-sm text-slate-500 hover:text-slate-700">← Voltar para vagas</button>
+          <div className="bg-white rounded-xl border border-slate-100 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">{selectedVacancy.title}</h2>
+                <p className="text-sm text-slate-500 mt-1">{selectedVacancy.dept} · {selectedVacancy.candidates} candidatos</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <PriorityBadge p={selectedVacancy.priority} />
+                <Badge variant={getStatusVariant(selectedVacancy.status)}>{selectedVacancy.status}</Badge>
               </div>
             </div>
-            <PriorityBadge p={v.priority} />
-            <Badge variant={v.status === "Aberta" ? "primary" : v.status === "Em Entrevista" ? "warning" : "success"}>{v.status}</Badge>
-            <div className="flex gap-1">
-              <button onClick={() => toast.info(`Abrindo ${v.title}`)} className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">Ver candidatos</button>
-              <button onClick={() => toast.success(`Vaga "${v.title}" encerrada`)} className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-red-500 hover:bg-red-50 transition-colors">Encerrar</button>
+            <p className="text-sm text-slate-600 mt-4">{selectedVacancy.description}</p>
+            <div className="mt-4 flex gap-2">
+              {selectedVacancy.status !== "Fechada" && (
+                <button onClick={() => closeVacancy(selectedVacancy)} className="px-3 py-1.5 text-sm border border-red-200 rounded-lg text-red-600 hover:bg-red-50 transition-colors">Encerrar vaga</button>
+              )}
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="bg-white rounded-xl border border-slate-100 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-900">Pipeline de candidatos</h3>
+              <span className="text-xs text-slate-500">Arraste o fluxo entre etapas</span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-5">
+              {pipelineStages.map(stage => {
+                const stageCandidates = selectedVacancy.applicants.filter(candidate => candidate.stage === stage);
+                return (
+                  <div
+                    key={stage}
+                    className="rounded-xl border border-slate-100 bg-slate-50 p-3 min-h-[180px]"
+                    onDragOver={event => event.preventDefault()}
+                    onDrop={() => {
+                      if (draggedCandidateId) {
+                        moveCandidate(selectedVacancy.id, draggedCandidateId, stage);
+                        setDraggedCandidateId(null);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-slate-800">{stage}</h4>
+                      <span className="text-xs text-slate-500">{stageCandidates.length}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {stageCandidates.length > 0 ? stageCandidates.map(candidate => (
+                        <div
+                          key={candidate.id}
+                          draggable
+                          onDragStart={() => setDraggedCandidateId(candidate.id)}
+                          onDragEnd={() => setDraggedCandidateId(null)}
+                          className="rounded-lg border border-slate-200 bg-white p-2 cursor-grab"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium text-slate-800">{candidate.name}</p>
+                              <p className="text-xs text-slate-500">{candidate.score}%</p>
+                            </div>
+                          </div>
+                        </div>
+                      )) : <p className="text-xs text-slate-400">Nenhum candidato nesta etapa ainda.</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-100 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-900">Lista de candidatos</h3>
+              <span className="text-xs text-slate-500">{selectedVacancy.applicants.length} inscritos</span>
+            </div>
+            {selectedVacancy.applicants.length > 0 ? (
+              <div className="space-y-2">
+                {selectedVacancy.applicants.map(candidate => (
+                  <div key={candidate.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{candidate.name}</p>
+                      <p className="text-xs text-slate-500">{candidate.stage}</p>
+                    </div>
+                    <div className="text-sm font-semibold text-slate-700">{candidate.score}%</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                Nenhum candidato cadastrado para esta vaga ainda. Acompanhe o processo e adicione novos perfis quando houver interesse.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : vacancies.length === 0 ? (
+        <div className="rounded-2xl border border-slate-100 bg-white p-6">
+          <EmptyState
+            icon={Briefcase}
+            title="Ainda não há vagas cadastradas"
+            desc="Crie a primeira vaga para começar a acompanhar candidatos e etapas do processo."
+            action="Nova vaga"
+            onAction={openNewVacancyForm}
+          />
+        </div>
+      ) : (
+        <div className="grid gap-3">
+          {vacancies.map(v => (
+            <div key={v.id} className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-sm transition-shadow flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#EFF6FF" }}><Briefcase size={18} style={{ color: "#2563EB" }} /></div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-slate-900">{v.title}</h3>
+                <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
+                  <span>{v.dept}</span>
+                  <span><Users size={11} className="inline mr-1" />{v.candidates} candidatos</span>
+                </div>
+              </div>
+              <PriorityBadge p={v.priority} />
+              <Badge variant={getStatusVariant(v.status)}>{v.status}</Badge>
+              <div className="flex gap-1">
+                <button onClick={() => openVacancyDetails(v)} className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">Ver candidatos</button>
+                {v.status !== "Fechada" && (
+                  <button onClick={() => closeVacancy(v)} className="px-3 py-1.5 text-xs border border-slate-200 rounded-lg text-red-500 hover:bg-red-50 transition-colors">Encerrar</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -2577,12 +3192,23 @@ function TrainingView() {
 }
 
 // ─── Analytics View ───────────────────────────────────────────────────────────
-function AnalyticsView({ employees }: { employees: Employee[] }) {
+function AnalyticsView({ employees, period, setPeriod }: { employees: Employee[]; period: DashboardPeriod; setPeriod: (value: DashboardPeriod) => void }) {
+  const periodFilteredEmployees = filterEmployeesByPeriod(employees, period);
+
   return (
     <div className="p-6 max-w-[1400px]">
       <div className="flex items-center justify-between mb-6">
-        <div><h1 className="text-2xl font-bold text-slate-900">Analytics</h1><p className="text-sm text-slate-500 mt-0.5">Business Intelligence · dados em tempo real</p></div>
-        <button onClick={() => toast.success("Dashboard atualizado")} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"><RefreshCw size={14} />Atualizar</button>
+        <div><h1 className="text-2xl font-bold text-slate-900">Analytics</h1><p className="text-sm text-slate-500 mt-0.5">Business Intelligence · {getPeriodLabel(period)}</p></div>
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+            {DASHBOARD_PERIODS.map(option => (
+              <button key={option.value} onClick={() => setPeriod(option.value)} className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${period === option.value ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => toast.success("Dashboard atualizado")} className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"><RefreshCw size={14} />Atualizar</button>
+        </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div className="bg-white rounded-xl border border-slate-100 p-5">
@@ -2596,7 +3222,7 @@ function AnalyticsView({ employees }: { employees: Employee[] }) {
         <div className="bg-white rounded-xl border border-slate-100 p-5 lg:col-span-2">
           <h3 className="text-sm font-semibold text-slate-900 mb-4">Score por colaborador</h3>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={employees.map(e => ({ name: e.name.split(" ")[0], score: e.score }))}>
+            <BarChart data={periodFilteredEmployees.map(e => ({ name: e.name.split(" ")[0], score: e.score }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#94A3B8" }} axisLine={false} tickLine={false} domain={[0, 100]} />
@@ -2681,7 +3307,9 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [employees, setEmployees] = useLocalStorage<Employee[]>("employees", SEED_EMPLOYEES);
   const [notifications, setNotifications] = useLocalStorage<Notification[]>("notifications", SEED_NOTIFICATIONS);
+  const [vacancies, setVacancies] = useLocalStorage<RecruitmentVacancy[]>("recruitment-vacancies", INITIAL_RECRUITMENT_VACANCIES);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [dashboardPeriod, setDashboardPeriod] = useState<DashboardPeriod>("mensal");
   const [formEmployee, setFormEmployee] = useState<Employee | null | undefined>(undefined);
   const [showNewForm, setShowNewForm] = useState(false);
 
@@ -2707,6 +3335,12 @@ export default function App() {
     setSelectedEmployee(null);
     setFormEmployee(undefined);
     setShowNewForm(false);
+  }
+
+  function handleDashboardKpi(nav: string, metric: string, period: DashboardPeriod) {
+    setDashboardPeriod(period);
+    handleNav(nav);
+    toast.success(`Abrindo ${metric === "total" ? "a lista de colaboradores" : metric === "turnover" ? "o relatório detalhado" : "a análise de desempenho"}`);
   }
 
   function handleSaveEmployee(emp: Employee) {
@@ -2744,17 +3378,17 @@ export default function App() {
       );
     }
     switch (active) {
-      case "dashboard": return <Dashboard setActive={handleNav} employees={employees} />;
-      case "employees": return <EmployeesView employees={employees} setEmployees={setEmployees} setActive={handleNav} onSelectProfile={e => { setSelectedEmployee(e); }} onNew={() => { setFormEmployee(undefined); setShowNewForm(true); }} onEdit={e => { setFormEmployee(e); setShowNewForm(true); }} />;
-      case "recruitment": return <RecruitmentView onNewEmployee={() => { setActive("employees"); setFormEmployee(undefined); setShowNewForm(true); }} />;
+      case "dashboard": return <Dashboard setActive={handleNav} employees={employees} period={dashboardPeriod} setPeriod={setDashboardPeriod} onKpiClick={handleDashboardKpi} />;
+      case "employees": return <EmployeesView employees={employees} setEmployees={setEmployees} setActive={handleNav} onSelectProfile={e => { setSelectedEmployee(e); }} onNew={() => { setFormEmployee(undefined); setShowNewForm(true); }} onEdit={e => { setFormEmployee(e); setShowNewForm(true); }} period={dashboardPeriod} setPeriod={setDashboardPeriod} />;
+      case "recruitment": return <RecruitmentView vacancies={vacancies} setVacancies={setVacancies} />;
       case "competencies": return <CompetenciesView />;
       case "evaluations": return <EvaluationsView employees={employees} />;
       case "goals": return <GoalsView employees={employees} />;
       case "kanban": return <KanbanView />;
       case "training": return <TrainingView />;
       case "certificates": return <CertificatesView employees={employees} />;
-      case "reports": return <ReportsView employees={employees} />;
-      case "analytics": return <AnalyticsView employees={employees} />;
+      case "reports": return <ReportsView employees={employees} period={dashboardPeriod} setPeriod={setDashboardPeriod} />;
+      case "analytics": return <AnalyticsView employees={employees} period={dashboardPeriod} setPeriod={setDashboardPeriod} />;
       case "orgchart": return <OrgChartView employees={employees} />;
       case "settings": return <SettingsView dark={dark} setDark={setDark} />;
       case "admin": return <AdminView />;
