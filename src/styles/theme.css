@@ -5,42 +5,47 @@
   --font-family: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --background: #F8FAFC;
-  --foreground: #0F172A;
+  --foreground: #111827;
   --card: #ffffff;
-  --card-foreground: #0F172A;
+  --card-foreground: #111827;
   --popover: #ffffff;
-  --popover-foreground: #0F172A;
+  --popover-foreground: #111827;
   --primary: #2563EB;
   --primary-foreground: #ffffff;
-  --secondary: #F1F5F9;
-  --secondary-foreground: #0F172A;
+  --secondary: #111827;
+  --secondary-foreground: #ffffff;
   --muted: #F1F5F9;
-  --muted-foreground: #64748B;
+  --muted-foreground: #6B7280;
   --accent: #EFF6FF;
   --accent-foreground: #1D4ED8;
-  --destructive: #DC2626;
+  --destructive: #EF4444;
   --destructive-foreground: #ffffff;
-  --border: #E2E8F0;
+  --border: #E5E7EB;
   --input: transparent;
-  --input-background: #F8FAFC;
+  --input-background: #F9FAFB;
   --switch-background: #CBD5E1;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: #93C5FD;
   --chart-1: #2563EB;
-  --chart-2: #16A34A;
-  --chart-3: #D97706;
+  --chart-2: #22C55E;
+  --chart-3: #F59E0B;
   --chart-4: #0EA5E9;
-  --chart-5: #8B5CF6;
+  --chart-5: #6366F1;
   --radius: 0.5rem;
-  --sidebar: #0F172A;
+  --sidebar: #0B1220;
   --sidebar-foreground: #CBD5E1;
   --sidebar-primary: #2563EB;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1E293B;
+  --sidebar-accent: #111827;
   --sidebar-accent-foreground: #F1F5F9;
-  --sidebar-border: #1E293B;
+  --sidebar-border: rgba(148, 163, 184, 0.18);
   --sidebar-ring: #2563EB;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px rgba(15, 23, 42, 0.06);
+  --shadow-card-hover: 0 4px 12px rgba(15, 23, 42, 0.08), 0 18px 42px rgba(15, 23, 42, 0.08);
 }
 
 .dark {
@@ -128,6 +133,14 @@
 
   body {
     @apply bg-background text-foreground;
+    min-width: 320px;
+    font-family: var(--font-family);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background:
+      radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 34rem),
+      linear-gradient(180deg, #ffffff 0%, #f8fafc 18rem, #f8fafc 100%);
   }
 
   /**
@@ -179,5 +192,109 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 2.5rem;
+  }
+
+  ::selection {
+    background: rgba(37, 99, 235, 0.16);
+    color: #111827;
+  }
+}
+
+@layer components {
+  .bg-white.rounded-xl.border,
+  .bg-white.rounded-2xl.border {
+    border-color: rgba(226, 232, 240, 0.85) !important;
+    box-shadow: var(--shadow-card);
+  }
+
+  .hover\:shadow-sm:hover,
+  .hover\:shadow-md:hover {
+    box-shadow: var(--shadow-card-hover) !important;
+  }
+
+  input,
+  select,
+  textarea {
+    border-color: #dbe3ef !important;
+    background-color: #ffffff !important;
+    color: #111827;
+    box-shadow: 0 1px 1px rgba(15, 23, 42, 0.02);
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: rgba(37, 99, 235, 0.7) !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12) !important;
+  }
+
+  table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgba(248, 250, 252, 0.96);
+    backdrop-filter: blur(12px);
+  }
+
+  th {
+    color: #64748b !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.04em !important;
+  }
+
+  tbody tr {
+    transition: background-color 180ms ease, transform 180ms ease;
+  }
+
+  tbody tr:hover {
+    background: #f8fafc !important;
+  }
+
+  .recharts-wrapper text {
+    font-family: var(--font-family);
+  }
+
+  .recharts-tooltip-wrapper {
+    filter: drop-shadow(0 14px 26px rgba(15, 23, 42, 0.12));
+  }
+}
+
+@layer utilities {
+  .premium-panel {
+    border: 1px solid rgba(226, 232, 240, 0.85);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(18px);
+  }
+
+  .focus-premium {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  }
+
+  .animate-soft-in {
+    animation: soft-in 260ms ease both;
+  }
+}
+
+@keyframes soft-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }

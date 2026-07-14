@@ -483,16 +483,16 @@ function AvatarEl({ name, size = "md", photo }: { name: string; size?: "xs"|"sm"
 
 function Badge({ children, variant = "default" }: { children: React.ReactNode; variant?: string }) {
   const cls: Record<string, string> = {
-    default: "bg-slate-100 text-slate-600",
-    success: "bg-green-50 text-green-700 border border-green-200",
+    default: "bg-slate-100 text-slate-700 border border-slate-200",
+    success: "bg-emerald-50 text-emerald-700 border border-emerald-200",
     warning: "bg-amber-50 text-amber-700 border border-amber-200",
     error: "bg-red-50 text-red-700 border border-red-200",
     info: "bg-sky-50 text-sky-700 border border-sky-200",
     primary: "bg-blue-50 text-blue-700 border border-blue-200",
-    purple: "bg-purple-50 text-purple-700 border border-purple-200",
-    gray: "bg-slate-100 text-slate-500",
+    purple: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+    gray: "bg-slate-100 text-slate-600 border border-slate-200",
   };
-  return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls[variant] || cls.default}`}>{children}</span>;
+  return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none shadow-sm ${cls[variant] || cls.default}`}>{children}</span>;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -515,7 +515,7 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
 function Spinner() { return <div className="w-4 h-4 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin" />; }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "destructive" | "ghost";
+  variant?: "primary" | "secondary" | "outline" | "danger" | "destructive" | "ghost";
   size?: "sm" | "md" | "lg";
   iconOnly?: boolean;
   children: ReactNode;
@@ -523,9 +523,11 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 function Button({ children, variant = "primary", size = "md", iconOnly = false, className = "", ...props }: ButtonProps) {
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm",
-    secondary: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 shadow-sm",
-    destructive: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 shadow-sm",
+    primary: "border border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-600/20 hover:bg-blue-700 hover:border-blue-700 active:bg-blue-800",
+    secondary: "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 active:bg-slate-100",
+    outline: "border border-slate-300 bg-transparent text-slate-700 hover:bg-white hover:border-slate-400 active:bg-slate-100",
+    danger: "border border-red-600 bg-red-600 text-white shadow-sm shadow-red-600/20 hover:bg-red-700 active:bg-red-800",
+    destructive: "border border-red-600 bg-red-600 text-white shadow-sm shadow-red-600/20 hover:bg-red-700 active:bg-red-800",
     ghost: "border border-transparent bg-transparent text-slate-600 hover:bg-slate-100 active:bg-slate-200 shadow-none",
   };
   const sizes = {
@@ -537,7 +539,7 @@ function Button({ children, variant = "primary", size = "md", iconOnly = false, 
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] ${variants[variant]} ${sizes[size]} ${iconOnly ? "h-9 w-9 p-0" : ""} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] ${variants[variant]} ${sizes[size]} ${iconOnly ? "h-9 w-9 p-0" : ""} ${className}`}
     >
       {children}
     </button>
@@ -555,8 +557,8 @@ function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmLabel
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onCancel}>
-      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm animate-soft-in" onClick={onCancel}>
+      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-start gap-3 mb-4">
           {danger ? <AlertTriangle size={20} className="text-red-500 shrink-0 mt-0.5" /> : <Info size={20} className="text-blue-500 shrink-0 mt-0.5" />}
           <div>
@@ -576,9 +578,9 @@ function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmLabel
 function Modal({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: React.ReactNode }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm animate-soft-in" onClick={onClose}>
+      <div className="w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/70 px-5 py-4">
           <h3 className="font-semibold text-slate-900">{title}</h3>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"><X size={16} /></button>
         </div>
@@ -798,38 +800,260 @@ function LoginScreen({ onLogin }: { onLogin: (user: { name: string; role: string
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 const SECTIONS = ["Pessoas", "Desenvolvimento", "Projetos", "Aprendizado", "Inteligência", "Sistema"];
-function Sidebar({ active, setActive, collapsed, setCollapsed, user }: {
+function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role: string; email: string }) => void }) {
+  const [email, setEmail] = useState("admin@talentflow.com");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [forgot, setForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const accounts = [
+    { email: "admin@talentflow.com", password: "admin123", name: "Carlos Alves", role: "CEO" },
+    { email: "rh@talentflow.com", password: "rh123", name: "Camila Rodrigues", role: "HRBP" },
+  ];
+
+  function validate() {
+    const e: Record<string, string> = {};
+    if (!email) e.email = "E-mail obrigatorio";
+    else if (!validateEmail(email)) e.email = "E-mail invalido";
+    if (!password) e.password = "Senha obrigatoria";
+    else if (password.length < 3) e.password = "Senha muito curta";
+    setErrors(e);
+    return !Object.keys(e).length;
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 900));
+    const acc = accounts.find(a => a.email === email && a.password === password);
+    setLoading(false);
+    if (acc) {
+      toast.success(`Bem-vindo, ${acc.name}!`);
+      onLogin({ name: acc.name, role: acc.role, email: acc.email });
+    } else {
+      setErrors({ password: "E-mail ou senha incorretos" });
+      toast.error("Credenciais invalidas");
+    }
+  }
+
+  async function handleForgot(e: React.FormEvent) {
+    e.preventDefault();
+    if (!forgotEmail || !validateEmail(forgotEmail)) { toast.error("Informe um e-mail valido"); return; }
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 800));
+    setLoading(false);
+    setForgotSent(true);
+    toast.success("Link de recuperacao enviado para " + forgotEmail);
+  }
+
+  return (
+    <div className="min-h-screen overflow-hidden bg-[#F8FAFC]">
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[1.02fr_0.98fr]">
+        <section className="relative flex items-center justify-center px-4 py-10 sm:px-6 lg:px-10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(37,99,235,0.10),transparent_28rem),radial-gradient(circle_at_80%_90%,rgba(34,197,94,0.08),transparent_24rem)]" />
+          <div className="relative w-full max-w-md">
+            <div className="mb-8">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 shadow-lg shadow-blue-600/25">
+                  <span className="text-sm font-bold text-white">TF</span>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-slate-950">TalentFlow</h1>
+                  <p className="text-xs font-medium text-slate-500">Enterprise ATS & People Ops</p>
+                </div>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm">
+                <Shield size={13} /> Acesso corporativo seguro
+              </div>
+              <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Gestao de talentos com clareza executiva.</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-500">Entre para acompanhar colaboradores, recrutamento, avaliacoes, metas e indicadores de RH em uma experiencia integrada.</p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-2xl shadow-slate-200/70 backdrop-blur">
+              {!forgot ? (
+                <>
+                  <div className="mb-5 flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-base font-bold text-slate-950">Entrar na plataforma</h2>
+                      <p className="mt-1 text-xs text-slate-500">Use seu e-mail corporativo para continuar.</p>
+                    </div>
+                    <Badge variant="success">Online</Badge>
+                  </div>
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-slate-700">E-mail corporativo</label>
+                      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@empresa.com" className={`h-11 w-full rounded-lg border px-3 text-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10 ${errors.email ? "border-red-400 bg-red-50" : "border-slate-200 bg-white"}`} />
+                      {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-slate-700">Senha</label>
+                      <div className="relative">
+                        <input type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="********" className={`h-11 w-full rounded-lg border px-3 pr-10 text-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10 ${errors.password ? "border-red-400 bg-red-50" : "border-slate-200 bg-white"}`} />
+                        <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600">
+                          {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                      {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
+                    </div>
+                    <button type="submit" disabled={loading} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-[0.99] disabled:opacity-70">
+                      {loading ? <Spinner /> : null}
+                      {loading ? "Entrando..." : "Entrar"}
+                    </button>
+                  </form>
+                  <div className="mt-4 text-center">
+                    <button onClick={() => { setForgot(true); setForgotSent(false); setForgotEmail(email); }} className="text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700">Esqueci minha senha</button>
+                  </div>
+                  <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-center text-xs font-medium text-slate-500">Acesso rapido</p>
+                    <div className="mt-2 flex gap-2">
+                      {accounts.map(a => (
+                        <button key={a.email} onClick={() => { setEmail(a.email); setPassword(a.password); }} className="flex-1 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">{a.role}</button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => setForgot(false)} className="mb-4 flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-slate-700"><ChevronRight size={13} className="rotate-180" /> Voltar</button>
+                  <h2 className="mb-1 text-base font-bold text-slate-950">Recuperar senha</h2>
+                  <p className="mb-5 text-xs text-slate-500">Enviaremos um link de redefinicao para seu e-mail.</p>
+                  {forgotSent ? (
+                    <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 py-6">
+                      <CheckCircle2 size={36} className="text-emerald-500" />
+                      <p className="text-center text-sm text-slate-700">Link enviado para <strong>{forgotEmail}</strong></p>
+                      <button onClick={() => setForgot(false)} className="mt-2 text-xs text-blue-600 hover:underline">Voltar ao login</button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleForgot} className="space-y-4">
+                      <div>
+                        <label className="mb-1.5 block text-xs font-semibold text-slate-700">E-mail corporativo</label>
+                        <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="seu@empresa.com" className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10" />
+                      </div>
+                      <button type="submit" disabled={loading} className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-colors hover:bg-blue-700 disabled:opacity-70">{loading ? <Spinner /> : null} {loading ? "Enviando..." : "Enviar link"}</button>
+                    </form>
+                  )}
+                </>
+              )}
+            </div>
+            <p className="mt-6 text-center text-xs text-slate-400">TalentFlow v2.0 - Enterprise HR Platform</p>
+          </div>
+        </section>
+
+        <section className="hidden items-center justify-center border-l border-slate-200 bg-slate-950 p-8 lg:flex">
+          <div className="w-full max-w-xl">
+            <div className="mb-6 flex items-center justify-between text-white">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">People analytics</p>
+                <h2 className="mt-2 text-2xl font-bold">Visao consolidada do time</h2>
+              </div>
+              <Badge variant="primary">Q3</Badge>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/30 backdrop-blur">
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Headcount", value: "248", icon: Users, tone: "bg-blue-500/15 text-blue-200" },
+                  { label: "Vagas abertas", value: "18", icon: Briefcase, tone: "bg-emerald-500/15 text-emerald-200" },
+                  { label: "Performance", value: "91%", icon: Star, tone: "bg-amber-500/15 text-amber-200" },
+                ].map(item => (
+                  <div key={item.label} className="rounded-xl border border-white/10 bg-white/[0.06] p-4">
+                    <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-lg ${item.tone}`}><item.icon size={17} /></div>
+                    <div className="text-2xl font-bold text-white">{item.value}</div>
+                    <div className="mt-1 text-[11px] font-medium text-slate-400">{item.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/80 p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-white">Pipeline de recrutamento</span>
+                  <span className="text-xs text-slate-400">Atualizado agora</span>
+                </div>
+                {[
+                  { stage: "Triagem", value: 82, color: "#60A5FA" },
+                  { stage: "Entrevista", value: 58, color: "#22C55E" },
+                  { stage: "Proposta", value: 36, color: "#F59E0B" },
+                ].map(row => (
+                  <div key={row.stage} className="mb-3 last:mb-0">
+                    <div className="mb-1 flex items-center justify-between text-xs"><span className="font-medium text-slate-300">{row.stage}</span><span className="text-slate-500">{row.value}%</span></div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full" style={{ width: `${row.value}%`, background: row.color }} /></div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {["Avaliacoes 360", "Metas ativas", "Treinamentos", "Organograma"].map((item, i) => (
+                  <div key={item} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-xs font-bold text-white">{i + 1}</span>
+                    <span className="text-sm font-medium text-slate-300">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-5 flex items-center gap-2 text-xs text-slate-500"><Lock size={13} /> Dados protegidos por sessao local e controle de acesso.</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function Sidebar({ active, setActive, collapsed, setCollapsed, user, onLogout }: {
   active: string; setActive: (v: string) => void;
   collapsed: boolean; setCollapsed: (v: boolean) => void;
   user: { name: string; role: string };
+  onLogout: () => void;
 }) {
   return (
-    <aside className="flex flex-col h-full shrink-0 transition-all duration-300" style={{ width: collapsed ? 64 : 260, background: "#0F172A", borderRight: "1px solid #1E293B" }}>
-      <div className="flex items-center gap-3 px-4 h-[60px] border-b border-slate-800 shrink-0">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "#2563EB" }}>
-          <span className="text-white font-bold text-sm">TF</span>
+    <aside className="flex h-full shrink-0 flex-col transition-all duration-300" style={{ width: collapsed ? 72 : 280, background: "linear-gradient(180deg, #0B1220 0%, #111827 100%)", borderRight: "1px solid rgba(148, 163, 184, 0.18)" }}>
+      <div className="flex h-[72px] shrink-0 items-center gap-3 border-b border-white/10 px-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-blue-600 shadow-lg shadow-blue-950/30">
+          <span className="text-sm font-bold text-white">TF</span>
         </div>
-        {!collapsed && <div className="overflow-hidden flex-1"><div className="text-white font-semibold text-sm">TalentFlow</div><div className="text-slate-400 text-[11px]">Enterprise HR</div></div>}
-        <button onClick={() => setCollapsed(!collapsed)} className="text-slate-400 hover:text-white transition-colors ml-auto shrink-0"><Menu size={16} /></button>
+        {!collapsed && (
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <div className="truncate text-sm font-bold text-white">TalentFlow</div>
+            <div className="truncate text-[11px] font-medium text-slate-400">Enterprise ATS & People Ops</div>
+          </div>
+        )}
+        <button onClick={() => setCollapsed(!collapsed)} className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"><Menu size={16} /></button>
       </div>
-      <nav className="flex-1 overflow-y-auto py-3 scrollbar-hide">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-hide">
         {navItems.filter(i => !i.section).map(item => <NavBtn key={item.id} item={item} active={active} setActive={setActive} collapsed={collapsed} />)}
         {SECTIONS.map(sec => {
           const items = navItems.filter(i => i.section === sec);
           if (!items.length) return null;
           return (
-            <div key={sec} className="mt-4">
-              {!collapsed && <div className="px-4 mb-1"><span className="text-slate-500 text-[10px] font-semibold uppercase tracking-widest">{sec}</span></div>}
-              {collapsed && <div className="mx-3 border-t border-slate-800 mb-2" />}
+            <div key={sec} className="mt-5">
+              {!collapsed && <div className="mb-2 px-2"><span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{sec}</span></div>}
+              {collapsed && <div className="mx-2 mb-2 border-t border-white/10" />}
               {items.map(item => <NavBtn key={item.id} item={item} active={active} setActive={setActive} collapsed={collapsed} />)}
             </div>
           );
         })}
       </nav>
-      <div className="border-t border-slate-800 p-3 shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="shrink-0 border-t border-white/10 p-3">
+        {!collapsed && (
+          <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-400">Plano Enterprise</span>
+              <Badge variant="primary">Ativo</Badge>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-[72%] rounded-full bg-blue-500" />
+            </div>
+          </div>
+        )}
+        <button onClick={() => setActive("settings")} className={`mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-white/10 hover:text-white ${collapsed ? "justify-center" : ""}`}>
+          <Settings size={16} />
+          {!collapsed && <span className="font-medium">Configurações</span>}
+        </button>
+        <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-2.5">
           <AvatarEl name={user.name} size="sm" />
-          {!collapsed && <div className="flex-1 overflow-hidden"><div className="text-white text-xs font-medium truncate">{user.name}</div><div className="text-slate-400 text-[11px] truncate">{user.role}</div></div>}
+          {!collapsed && <div className="min-w-0 flex-1 overflow-hidden"><div className="truncate text-xs font-semibold text-white">{user.name}</div><div className="truncate text-[11px] text-slate-400">{user.role}</div></div>}
+          {!collapsed && <button onClick={onLogout} title="Sair" className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-300"><LogOut size={15} /></button>}
         </div>
       </div>
     </aside>
@@ -841,10 +1065,10 @@ function NavBtn({ item, active, setActive, collapsed }: { item: typeof navItems[
   const Icon = item.icon;
   return (
     <button onClick={() => setActive(item.id)} title={collapsed ? item.label : undefined}
-      className={`w-full flex items-center gap-3 px-4 py-2 text-sm transition-all relative ${isActive ? "text-white bg-slate-800" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"}`}
+      className={`relative mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${collapsed ? "justify-center" : ""} ${isActive ? "bg-white text-slate-950 shadow-lg shadow-slate-950/20" : "text-slate-400 hover:bg-white/10 hover:text-slate-100"}`}
     >
-      {isActive && <span className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full" style={{ background: "#2563EB" }} />}
-      <Icon size={16} className="shrink-0" />
+      {isActive && <span className="absolute -left-3 top-2 bottom-2 w-1 rounded-r-full bg-blue-500" />}
+      <Icon size={17} className={`shrink-0 ${isActive ? "text-blue-600" : ""}`} />
       {!collapsed && <span className="truncate font-medium">{item.label}</span>}
     </button>
   );
@@ -896,7 +1120,130 @@ function Navbar({ active, dark, setDark, notifications, setNotifications, setAct
   ] : [];
 
   return (
-    <header className="flex items-center gap-3 px-6 h-[60px] bg-white border-b border-slate-200 shrink-0 relative z-30">
+    <header className="relative z-30 flex h-[72px] shrink-0 items-center gap-4 border-b border-slate-200/80 bg-white/90 px-4 shadow-sm backdrop-blur-xl sm:px-6">
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="hidden text-slate-400 sm:inline">TalentFlow</span>
+          <ChevronRight size={13} className="hidden sm:block" />
+          <span className="truncate font-semibold text-slate-700">{label}</span>
+        </div>
+        <div className="mt-0.5 hidden text-[11px] text-slate-400 lg:block capitalize">{today}</div>
+      </div>
+      <div className="flex-1" />
+
+      {/* Search */}
+      <div ref={searchRef} className="relative hidden min-w-[240px] md:block">
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input value={search} onChange={e => { setSearch(e.target.value); setShowSearch(true); }}
+          onFocus={() => setShowSearch(true)}
+          placeholder="Buscar pessoas, vagas, relatórios..."
+          className="h-10 w-72 rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm transition-all focus:w-96 focus:border-blue-400 focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+        />
+        {showSearch && searchResults.length > 0 && (
+          <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl animate-soft-in">
+            {searchResults.map((r, i) => (
+              <button key={i} onClick={() => { setActive(r.action); setSearch(""); setShowSearch(false); }}
+                className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-slate-50">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100">
+                  {r.type === "person" ? <User size={15} className="text-blue-600" /> : <Layers size={15} className="text-slate-500" />}
+                </span>
+                <div><div className="text-sm font-semibold text-slate-800">{r.label}</div><div className="text-xs text-slate-400">{r.sub}</div></div>
+              </button>
+            ))}
+          </div>
+        )}
+        {showSearch && search.length > 1 && searchResults.length === 0 && (
+          <div className="absolute left-0 right-0 top-full z-50 mt-2 rounded-xl border border-slate-200 bg-white p-4 text-center text-xs text-slate-400 shadow-2xl animate-soft-in">Sem resultados para "{search}"</div>
+        )}
+      </div>
+
+      <button onClick={() => setShowSearch(true)}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 md:hidden">
+        <Search size={16} />
+      </button>
+
+      <div className="hidden h-6 w-px bg-slate-200 sm:block" />
+
+      {/* Notifications */}
+      <div ref={notifsRef} className="relative">
+        <button onClick={() => { setShowNotifs(!showNotifs); setShowProfile(false); }}
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">
+          <Bell size={17} />
+          {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[9px] font-bold text-white">{unread}</span>}
+        </button>
+        {showNotifs && (
+          <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl animate-soft-in">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+              <span className="text-sm font-semibold text-slate-900">Notificações</span>
+              <div className="flex gap-2">
+                <button onClick={markAllRead} className="text-xs font-medium text-blue-600 hover:text-blue-700">Marcar todas</button>
+                <button onClick={clearNotifs} className="text-xs font-medium text-slate-400 hover:text-slate-600">Limpar</button>
+              </div>
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400">Nenhuma notificação</div>
+              ) : notifications.map(n => (
+                <div key={n.id} onClick={() => setNotifications(notifications.map(x => x.id === n.id ? { ...x, read: true } : x))}
+                  className={`flex cursor-pointer items-start gap-3 border-b border-slate-50 px-4 py-3 transition-colors hover:bg-slate-50 ${!n.read ? "bg-blue-50/50" : ""}`}>
+                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${!n.read ? "bg-blue-500" : "bg-transparent"}`} />
+                  <div className="flex-1"><p className="text-xs text-slate-700">{n.text}</p><p className="mt-0.5 text-[11px] text-slate-400">{n.time}</p></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <button onClick={() => { setActive("reports"); toast.info("Abrindo mensagens..."); }}
+        className="hidden h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 sm:flex">
+        <MessageSquare size={17} />
+      </button>
+
+      <button onClick={() => setShowHelp(true)} className="hidden h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 sm:flex">
+        <HelpCircle size={17} />
+      </button>
+
+      <button onClick={toggleDark} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">
+        {dark ? <Sun size={17} /> : <Moon size={17} />}
+      </button>
+
+      {/* Profile */}
+      <div ref={profileRef} className="relative">
+        <button onClick={() => { setShowProfile(!showProfile); setShowNotifs(false); }}
+          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white py-1.5 pl-2 pr-2.5 shadow-sm transition-colors hover:bg-slate-50">
+          <AvatarEl name={user.name} size="sm" />
+          <div className="hidden text-left sm:block">
+            <div className="text-xs font-semibold text-slate-800">{user.name}</div>
+            <div className="text-[11px] text-slate-400">{user.role}</div>
+          </div>
+          <ChevronDown size={13} className="text-slate-400" />
+        </button>
+        {showProfile && (
+          <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl animate-soft-in">
+            <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+              <p className="text-sm font-semibold text-slate-900">{user.name}</p>
+              <p className="text-xs text-slate-400">{user.email}</p>
+            </div>
+            {[
+              { label: "Meu Perfil", icon: User, action: () => { setActive("employees"); setShowProfile(false); } },
+              { label: "Configurações", icon: Settings, action: () => { setActive("settings"); setShowProfile(false); } },
+              { label: "Administração", icon: Shield, action: () => { setActive("admin"); setShowProfile(false); } },
+            ].map(item => (
+              <button key={item.label} onClick={item.action} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 transition-colors hover:bg-slate-50">
+                <item.icon size={14} />{item.label}
+              </button>
+            ))}
+            <div className="border-t border-slate-100">
+              <button onClick={onLogout} className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50">
+                <LogOut size={14} />Sair da conta
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+{/* Legacy navbar body retained below for diff stability */}
+{false && <>
       <div className="flex items-center gap-1.5 text-sm text-slate-400">
         <span className="text-slate-300">TalentFlow</span>
         <ChevronRight size={14} />
@@ -1008,6 +1355,7 @@ function Navbar({ active, dark, setDark, notifications, setNotifications, setAct
         )}
       </div>
 
+      </>}
       <Modal open={showHelp} title="Central de Ajuda" onClose={() => setShowHelp(false)}>
         <div className="space-y-3">
           {[
@@ -1079,14 +1427,14 @@ function Dashboard({ setActive, employees, period, setPeriod, onKpiClick }: { se
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-[1600px]">
-      <div className="flex items-center justify-between">
+    <div className="max-w-[1600px] space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/85 p-5 shadow-sm backdrop-blur xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard Executivo</h1>
+          <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">Dashboard Executivo</h1>
           <p className="text-sm text-slate-500 mt-0.5">Visão geral do capital humano · {new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 shadow-sm">
             {DASHBOARD_PERIODS.map(option => (
               <button key={option.value} onClick={() => setPeriod(option.value)} className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${period === option.value ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
                 {option.label}
@@ -1103,19 +1451,19 @@ function Dashboard({ setActive, employees, period, setPeriod, onKpiClick }: { se
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpis.map((k, i) => {
           const Icon = k.icon;
           return (
-            <button key={i} onClick={() => onKpiClick(k.nav, k.metric, period)} className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md hover:-translate-y-0.5 transition-all text-left group">
+            <button key={i} onClick={() => onKpiClick(k.nav, k.metric, period)} className="group rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg">
               <div className="flex items-start justify-between mb-3">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: k.bg }}>
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-white shadow-sm" style={{ background: k.bg }}>
                   <Icon size={18} style={{ color: k.color }} />
                 </div>
                 <Sparkline data={sparkVals.map((v, j) => v + i * 2 + j % 3)} color={k.color} />
               </div>
-              <div className="text-2xl font-bold text-slate-900 leading-none mb-1">{k.value}</div>
-              <div className="text-xs text-slate-500 mb-2">{k.label}</div>
+              <div className="mb-1 text-3xl font-bold leading-none text-slate-950">{k.value}</div>
+              <div className="mb-2 text-xs font-medium text-slate-500">{k.label}</div>
               <div className={`flex items-center gap-1 text-xs font-medium ${k.up ? "text-green-600" : "text-red-500"}`}>
                 {k.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                 {k.pct} <span className="text-slate-400 font-normal">vs mês anterior</span>
@@ -1126,8 +1474,8 @@ function Dashboard({ setActive, employees, period, setPeriod, onKpiClick }: { se
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-100 p-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
           <h3 className="text-sm font-semibold text-slate-900 mb-5">Evolução de Performance</h3>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={perf}>
@@ -1140,7 +1488,7 @@ function Dashboard({ setActive, employees, period, setPeriod, onKpiClick }: { se
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <div className="bg-white rounded-xl border border-slate-100 p-5">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-900 mb-5">Distribuição por Nível</h3>
           <ResponsiveContainer width="100%" height={160}>
             <PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={72} paddingAngle={3} dataKey="value">
@@ -1159,8 +1507,8 @@ function Dashboard({ setActive, employees, period, setPeriod, onKpiClick }: { se
       </div>
 
       {/* Bar + Employees + Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-100 p-5">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
           <h3 className="text-sm font-semibold text-slate-900 mb-5">Headcount por Departamento</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={deptData} barSize={22}>
@@ -1172,7 +1520,7 @@ function Dashboard({ setActive, employees, period, setPeriod, onKpiClick }: { se
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="bg-white rounded-xl border border-slate-100 p-5">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-slate-900">Últimas Admissões</h3>
             <button onClick={() => setActive("employees")} className="text-xs text-blue-600 hover:text-blue-700 font-medium">Ver todos</button>
@@ -1310,24 +1658,24 @@ function EmployeeForm({ initial, onSave, onCancel, onSaveAnother, employees }: {
   );
 
   return (
-    <div className="p-6 max-w-[1200px]">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="max-w-[1200px] p-4 sm:p-6 lg:p-8">
+      <div className="mb-6 flex items-center gap-3">
         <button onClick={onCancel} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"><ChevronRight size={14} className="rotate-180" />Colaboradores</button>
         <ChevronRight size={14} className="text-slate-300" />
         <span className="text-sm font-medium text-slate-700">{isEdit ? `Editar: ${initial?.name}` : "Novo Colaborador"}</span>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
-        <div className="flex border-b border-slate-100 overflow-x-auto">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex overflow-x-auto border-b border-slate-100 bg-slate-50/80 px-2">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-4 py-3 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${tab === t.id ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+              className={`whitespace-nowrap border-b-2 px-4 py-3 text-xs font-semibold transition-colors ${tab === t.id ? "border-blue-600 text-blue-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
               {t.label}
             </button>
           ))}
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {tab === "pessoal" && (
             <div className="space-y-5">
               {/* Photo */}
@@ -1472,7 +1820,7 @@ function EmployeeForm({ initial, onSave, onCancel, onSaveAnother, employees }: {
           )}
         </div>
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+        <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
           <div className="flex gap-2">
             {!isEdit && onSaveAnother && (
@@ -1550,15 +1898,15 @@ function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, on
   }
 
   return (
-    <div className="p-6 max-w-[1600px]">
+    <div className="max-w-[1600px] p-4 sm:p-6 lg:p-8">
       <ConfirmDialog open={!!confirmDel} title="Excluir colaborador" message={`Deseja excluir ${confirmDel?.name}? Esta ação não pode ser desfeita.`} confirmLabel="Excluir" danger onConfirm={() => confirmDel && deleteEmployee(confirmDel)} onCancel={() => setConfirmDel(null)} />
 
-      <div className="flex items-start justify-between mb-6">
+      <div className="mb-6 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/85 p-5 shadow-sm backdrop-blur lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Colaboradores</h1>
           <p className="text-sm text-slate-500 mt-0.5">{periodFilteredEmployees.length} colaboradores em {getPeriodLabel(period).toLowerCase()} · {periodFilteredEmployees.filter(e => e.status === "Ativo").length} ativos</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <label className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
             <Upload size={14} />Importar
             <input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleImport} />
@@ -1569,7 +1917,7 @@ function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, on
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-100 p-4 mb-4">
+      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[180px]">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1601,10 +1949,11 @@ function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, on
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
-        <table className="w-full">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="max-h-[620px] overflow-auto">
+        <table className="w-full min-w-[900px]">
           <thead>
-            <tr className="border-b border-slate-100">
+            <tr className="border-b border-slate-100 bg-slate-50/90">
               {["Colaborador", "Cargo / Dept.", "Gestor", "Admissão", "Status", "Score", ""].map((h, i) => (
                 <th key={i} className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide text-left ${i >= 2 ? "hidden md:table-cell" : ""} ${i === 6 ? "text-right" : ""}`}>{h}</th>
               ))}
@@ -1614,7 +1963,7 @@ function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, on
             {loading ? [...Array(perPage)].map((_, i) => <SkeletonRow key={i} />) : shown.length === 0 ? (
               <tr><td colSpan={7} className="py-1"><EmptyState icon={Users} title={employees.length === 0 ? "Ainda não há colaboradores cadastrados" : "Nenhum colaborador atende aos filtros"} desc={employees.length === 0 ? "Cadastre o primeiro colaborador para começar a acompanhar a equipe." : "Ajuste a busca ou limpe os filtros para encontrar mais resultados."} action={employees.length === 0 ? "Novo Colaborador" : "Limpar filtros"} onAction={employees.length === 0 ? onNew : clearFilters} /></td></tr>
             ) : shown.map(e => (
-              <tr key={e.id} className="border-b border-slate-50 hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => onSelectProfile(e)}>
+              <tr key={e.id} className="group cursor-pointer border-b border-slate-50 transition-colors hover:bg-blue-50/35" onClick={() => onSelectProfile(e)}>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <AvatarEl name={e.name} size="sm" photo={e.photo} />
@@ -1653,7 +2002,8 @@ function EmployeesView({ employees, setEmployees, setActive, onSelectProfile, on
             ))}
           </tbody>
         </table>
-        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
+        </div>
+        <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-xs text-slate-400">{filtered.length} resultado(s) · Página {page} de {pages}</span>
           <div className="flex items-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="w-7 h-7 flex items-center justify-center rounded text-slate-500 hover:bg-slate-100 disabled:opacity-30 transition-colors"><ChevronRight size={13} className="rotate-180" /></button>
@@ -3400,7 +3750,7 @@ export default function App() {
     return (
       <>
         <Toaster richColors position="top-right" />
-        <LoginScreen onLogin={handleLogin} />
+        <PremiumLoginScreen onLogin={handleLogin} />
       </>
     );
   }
@@ -3408,7 +3758,7 @@ export default function App() {
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#F8FAFC", fontFamily: "'Inter', system-ui, sans-serif" }}>
       <Toaster richColors position="top-right" />
-      <Sidebar active={showNewForm ? "employees" : active} setActive={handleNav} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} user={authed} />
+      <Sidebar active={showNewForm ? "employees" : active} setActive={handleNav} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} user={authed} onLogout={handleLogout} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar active={showNewForm ? "employees" : active} dark={dark} setDark={setDark} notifications={notifications} setNotifications={setNotifications} setActive={handleNav} user={authed} onLogout={handleLogout} />
         <main className="flex-1 overflow-y-auto scrollbar-hide">
