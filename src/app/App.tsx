@@ -11,13 +11,14 @@ import {
   RefreshCw, Upload, Camera, MapPin, Globe, Lock, EyeOff, Check,
   XCircle, RotateCcw, Printer, Share2, FileDown, ChevronUp, Minus,
   AlertTriangle, Info, MoreVertical, GripVertical, Tag, Layers,
-  BarChart2, PieChart as PieChartIcon, List, Grid, Save, Ban,
+  BarChart2, PieChart as PieChartIcon, List, Grid, Save, Ban, Bot, Send,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, LineChart, Line,
 } from "recharts";
+import { getTalentFlowAnswer, QUICK_ASSISTANT_QUESTIONS, type AssistantContext } from "./data/talentflowKnowledge";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Employee = {
@@ -655,6 +656,7 @@ function DashboardSkeleton() {
 
 // ─── Login ────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }: { onLogin: (user: { name: string; role: string; email: string }) => void }) {
+  const [register, setRegister] = useState(false);
   const [email, setEmail] = useState("admin@talentflow.com");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -663,6 +665,8 @@ function LoginScreen({ onLogin }: { onLogin: (user: { name: string; role: string
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSent, setForgotSent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  if (register) return <CompanyRegistrationScreen onLogin={onLogin} onBack={() => setRegister(false)} />;
 
   const accounts = [
     { email: "admin@talentflow.com", password: "admin123", name: "Carlos Alves", role: "CEO" },
@@ -800,7 +804,41 @@ function LoginScreen({ onLogin }: { onLogin: (user: { name: string; role: string
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 const SECTIONS = ["Pessoas", "Desenvolvimento", "Projetos", "Aprendizado", "Inteligência", "Sistema"];
+function CompanyRegistrationScreen({ onLogin, onBack }: { onLogin: (user: { name: string; role: string; email: string }) => void; onBack: () => void }) {
+  const [form, setForm] = useState({ company: "", cnpj: "", name: "", email: "", password: "", sector: "", companySize: "" });
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  function update(field: keyof typeof form, value: string) { setForm(prev => ({ ...prev, [field]: value })); setErrors(prev => ({ ...prev, [field]: "" })); }
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const nextErrors: Record<string, string> = {};
+    if (!form.company.trim()) nextErrors.company = "Informe o nome da empresa.";
+    if (form.cnpj && form.cnpj.replace(/\D/g, "").length !== 14) nextErrors.cnpj = "Informe um CNPJ válido com 14 dígitos.";
+    if (!form.name.trim()) nextErrors.name = "Informe o nome do responsável.";
+    if (!validateEmail(form.email)) nextErrors.email = "Informe um e-mail válido.";
+    if (form.password.length < 6) nextErrors.password = "A senha deve ter ao menos 6 caracteres.";
+    if (!form.sector) nextErrors.sector = "Selecione o segmento da empresa.";
+    if (!form.companySize) nextErrors.companySize = "Selecione o porte da empresa.";
+    if (Object.keys(nextErrors).length) { setErrors(nextErrors); toast.error("Revise os campos destacados para continuar."); return; }
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 700));
+    localStorage.setItem("company-profile", JSON.stringify({ name: form.company.trim(), cnpj: form.cnpj.replace(/\D/g, ""), owner: form.name.trim(), email: form.email.trim().toLowerCase(), sector: form.sector, companySize: form.companySize }));
+    localStorage.setItem("company-account", JSON.stringify({
+      email: form.email.trim().toLowerCase(),
+      password: form.password,
+      name: form.name.trim(),
+      role: "Administrador",
+    }));
+    toast.success("Empresa cadastrada com sucesso!");
+    onLogin({ name: form.name.trim(), role: "Administrador", email: form.email });
+  }
+  const fieldClass = (field: keyof typeof form) => `h-11 w-full rounded-lg border px-3 text-sm outline-none focus:ring-4 focus:ring-blue-500/10 ${errors[field] ? "border-red-400 bg-red-50" : "border-slate-200"}`;
+  const error = (field: keyof typeof form) => errors[field] && <p className="mt-1 text-xs text-red-500">{errors[field]}</p>;
+  return <div className="min-h-screen bg-[#F8FAFC] px-4 py-10 sm:px-6"><div className="mx-auto w-full max-w-lg"><div className="mb-8 flex items-center gap-3"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold text-white shadow-lg shadow-blue-600/25">TF</div><div><h1 className="text-xl font-bold text-slate-950">TalentFlow</h1><p className="text-xs font-medium text-slate-500">Crie o ambiente da sua empresa</p></div></div><div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60"><div className="mb-6"><span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700"><Building2 size={13} /> Novo cadastro</span><h2 className="mt-3 text-2xl font-bold text-slate-950">Cadastre sua empresa</h2><p className="mt-1 text-sm text-slate-500">Comece do zero e administre seus talentos em um único lugar.</p></div><form onSubmit={submit} className="space-y-4"><div><label className="mb-1.5 block text-xs font-semibold text-slate-700">Nome da empresa *</label><input value={form.company} onChange={e => update("company", e.target.value)} placeholder="Sua empresa" className={fieldClass("company")} />{error("company")}</div><div><label className="mb-1.5 block text-xs font-semibold text-slate-700">CNPJ <span className="font-normal text-slate-400">(opcional)</span></label><input value={form.cnpj} onChange={e => update("cnpj", e.target.value)} inputMode="numeric" placeholder="00.000.000/0000-00" className={fieldClass("cnpj")} />{error("cnpj")}</div><div><label className="mb-1.5 block text-xs font-semibold text-slate-700">Nome do responsável *</label><input value={form.name} onChange={e => update("name", e.target.value)} placeholder="Nome do administrador" className={fieldClass("name")} />{error("name")}</div><div><label className="mb-1.5 block text-xs font-semibold text-slate-700">E-mail corporativo *</label><input type="email" value={form.email} onChange={e => update("email", e.target.value)} placeholder="contato@empresa.com" className={fieldClass("email")} />{error("email")}</div><div><label className="mb-1.5 block text-xs font-semibold text-slate-700">Senha *</label><input type="password" value={form.password} onChange={e => update("password", e.target.value)} placeholder="Mínimo de 6 caracteres" className={fieldClass("password")} />{error("password")}</div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2"><div><label className="mb-1.5 block text-xs font-semibold text-slate-700">Segmento *</label><select value={form.sector} onChange={e => update("sector", e.target.value)} className={fieldClass("sector")}><option value="">Selecione</option><option>Tecnologia</option><option>Serviços</option><option>Varejo</option><option>Indústria</option><option>Outro</option></select>{error("sector")}</div><div><label className="mb-1.5 block text-xs font-semibold text-slate-700">Porte *</label><select value={form.companySize} onChange={e => update("companySize", e.target.value)} className={fieldClass("companySize")}><option value="">Selecione</option><option>1 a 10 pessoas</option><option>11 a 50 pessoas</option><option>51 a 200 pessoas</option><option>Mais de 200 pessoas</option></select>{error("companySize")}</div></div><button disabled={loading} type="submit" className="flex h-11 w-full items-center justify-center rounded-lg bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-70">{loading ? "Criando ambiente..." : "Criar conta e acessar"}</button></form><div className="mt-5 border-t border-slate-100 pt-5 text-center text-sm text-slate-500">Já possui uma conta? <button type="button" onClick={onBack} className="font-semibold text-blue-600 hover:text-blue-700">Entrar</button></div></div></div></div>;
+}
+
 function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role: string; email: string }) => void }) {
+  const [register, setRegister] = useState(false);
   const [email, setEmail] = useState("admin@talentflow.com");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -810,16 +848,28 @@ function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role:
   const [forgotSent, setForgotSent] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  if (register) return <CompanyRegistrationScreen onLogin={onLogin} onBack={() => setRegister(false)} />;
+
+  const savedCompanyAccount = (() => {
+    try {
+      const saved = localStorage.getItem("company-account");
+      return saved ? JSON.parse(saved) as { email: string; password: string; name: string; role: string } : null;
+    } catch {
+      return null;
+    }
+  })();
+
   const accounts = [
     { email: "admin@talentflow.com", password: "admin123", name: "Carlos Alves", role: "CEO" },
     { email: "rh@talentflow.com", password: "rh123", name: "Camila Rodrigues", role: "HRBP" },
+    ...(savedCompanyAccount ? [savedCompanyAccount] : []),
   ];
 
   function validate() {
     const e: Record<string, string> = {};
-    if (!email) e.email = "E-mail obrigatorio";
-    else if (!validateEmail(email)) e.email = "E-mail invalido";
-    if (!password) e.password = "Senha obrigatoria";
+    if (!email) e.email = "E-mail obrigatório";
+    else if (!validateEmail(email)) e.email = "E-mail inválido";
+    if (!password) e.password = "Senha obrigatória";
     else if (password.length < 3) e.password = "Senha muito curta";
     setErrors(e);
     return !Object.keys(e).length;
@@ -830,25 +880,25 @@ function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role:
     if (!validate()) return;
     setLoading(true);
     await new Promise(r => setTimeout(r, 900));
-    const acc = accounts.find(a => a.email === email && a.password === password);
+    const acc = accounts.find(a => a.email === email.trim().toLowerCase() && a.password === password);
     setLoading(false);
     if (acc) {
       toast.success(`Bem-vindo, ${acc.name}!`);
       onLogin({ name: acc.name, role: acc.role, email: acc.email });
     } else {
       setErrors({ password: "E-mail ou senha incorretos" });
-      toast.error("Credenciais invalidas");
+      toast.error("Credenciais inválidas");
     }
   }
 
   async function handleForgot(e: React.FormEvent) {
     e.preventDefault();
-    if (!forgotEmail || !validateEmail(forgotEmail)) { toast.error("Informe um e-mail valido"); return; }
+    if (!forgotEmail || !validateEmail(forgotEmail)) { toast.error("Informe um e-mail válido"); return; }
     setLoading(true);
     await new Promise(r => setTimeout(r, 800));
     setLoading(false);
     setForgotSent(true);
-    toast.success("Link de recuperacao enviado para " + forgotEmail);
+    toast.success("Link de recuperação enviado para " + forgotEmail);
   }
 
   return (
@@ -870,8 +920,8 @@ function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role:
               <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm">
                 <Shield size={13} /> Acesso corporativo seguro
               </div>
-              <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Gestao de talentos com clareza executiva.</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-500">Entre para acompanhar colaboradores, recrutamento, avaliacoes, metas e indicadores de RH em uma experiencia integrada.</p>
+              <h2 className="mt-4 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Gestão de talentos com clareza executiva.</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-500">Entre para acompanhar colaboradores, recrutamento, avaliações, metas e indicadores de RH em uma experiência integrada.</p>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-2xl shadow-slate-200/70 backdrop-blur">
@@ -908,8 +958,11 @@ function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role:
                   <div className="mt-4 text-center">
                     <button onClick={() => { setForgot(true); setForgotSent(false); setForgotEmail(email); }} className="text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700">Esqueci minha senha</button>
                   </div>
+                  <div className="mt-3 text-center text-xs text-slate-500">
+                    Primeira vez no TalentFlow? <button onClick={() => setRegister(true)} className="font-semibold text-blue-600 transition-colors hover:text-blue-700">Cadastrar empresa</button>
+                  </div>
                   <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-center text-xs font-medium text-slate-500">Acesso rapido</p>
+                    <p className="text-center text-xs font-medium text-slate-500">Acesso rápido</p>
                     <div className="mt-2 flex gap-2">
                       {accounts.map(a => (
                         <button key={a.email} onClick={() => { setEmail(a.email); setPassword(a.password); }} className="flex-1 rounded-lg border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">{a.role}</button>
@@ -921,7 +974,7 @@ function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role:
                 <>
                   <button onClick={() => setForgot(false)} className="mb-4 flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-slate-700"><ChevronRight size={13} className="rotate-180" /> Voltar</button>
                   <h2 className="mb-1 text-base font-bold text-slate-950">Recuperar senha</h2>
-                  <p className="mb-5 text-xs text-slate-500">Enviaremos um link de redefinicao para seu e-mail.</p>
+                  <p className="mb-5 text-xs text-slate-500">Enviaremos um link de redefinição para seu e-mail.</p>
                   {forgotSent ? (
                     <div className="flex flex-col items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 py-6">
                       <CheckCircle2 size={36} className="text-emerald-500" />
@@ -949,7 +1002,7 @@ function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role:
             <div className="mb-6 flex items-center justify-between text-white">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">People analytics</p>
-                <h2 className="mt-2 text-2xl font-bold">Visao consolidada do time</h2>
+                <h2 className="mt-2 text-2xl font-bold">Visão consolidada do time</h2>
               </div>
               <Badge variant="primary">Q3</Badge>
             </div>
@@ -984,7 +1037,7 @@ function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role:
                 ))}
               </div>
               <div className="mt-4 grid grid-cols-2 gap-3">
-                {["Avaliacoes 360", "Metas ativas", "Treinamentos", "Organograma"].map((item, i) => (
+                {["Avaliações 360", "Metas ativas", "Treinamentos", "Organograma"].map((item, i) => (
                   <div key={item} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
                     <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-xs font-bold text-white">{i + 1}</span>
                     <span className="text-sm font-medium text-slate-300">{item}</span>
@@ -992,7 +1045,7 @@ function PremiumLoginScreen({ onLogin }: { onLogin: (user: { name: string; role:
                 ))}
               </div>
             </div>
-            <div className="mt-5 flex items-center gap-2 text-xs text-slate-500"><Lock size={13} /> Dados protegidos por sessao local e controle de acesso.</div>
+            <div className="mt-5 flex items-center gap-2 text-xs text-slate-500"><Lock size={13} /> Dados protegidos por sessão local e controle de acesso.</div>
           </div>
         </section>
       </div>
@@ -1007,7 +1060,7 @@ function Sidebar({ active, setActive, collapsed, setCollapsed, user, onLogout }:
   onLogout: () => void;
 }) {
   return (
-    <aside className="flex h-full shrink-0 flex-col transition-all duration-300" style={{ width: collapsed ? 72 : 280, background: "linear-gradient(180deg, #0B1220 0%, #111827 100%)", borderRight: "1px solid rgba(148, 163, 184, 0.18)" }}>
+    <aside className="flex h-full shrink-0 flex-col transition-[width] duration-300 ease-in-out" style={{ width: collapsed ? 72 : 280, background: "linear-gradient(180deg, #0B1220 0%, #111827 100%)", borderRight: "1px solid rgba(148, 163, 184, 0.18)" }}>
       <div className="flex h-[72px] shrink-0 items-center gap-3 border-b border-white/10 px-4">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-blue-600 shadow-lg shadow-blue-950/30">
           <span className="text-sm font-bold text-white">TF</span>
@@ -1018,7 +1071,7 @@ function Sidebar({ active, setActive, collapsed, setCollapsed, user, onLogout }:
             <div className="truncate text-[11px] font-medium text-slate-400">Enterprise ATS & People Ops</div>
           </div>
         )}
-        <button onClick={() => setCollapsed(!collapsed)} className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"><Menu size={16} /></button>
+        <button onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"} title={collapsed ? "Expandir menu" : "Recolher menu"} className="ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"><Menu size={16} /></button>
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-4 scrollbar-hide">
         {navItems.filter(i => !i.section).map(item => <NavBtn key={item.id} item={item} active={active} setActive={setActive} collapsed={collapsed} />)}
@@ -2438,6 +2491,7 @@ function CompetenciesView() {
 function EvaluationsView({ employees }: { employees: Employee[] }) {
   const [evals, setEvals] = useLocalStorage<Evaluation[]>("evaluations", SEED_EVALUATIONS);
   const [showForm, setShowForm] = useState(false);
+  const [editingEval, setEditingEval] = useState<Evaluation | null>(null);
   const [answerModal, setAnswerModal] = useState<Evaluation | null>(null);
   const [confirmDel, setConfirmDel] = useState<Evaluation | null>(null);
   const [form, setForm] = useState({ title: "", type: "360°", period: "", deadline: "", employees: [] as number[] });
@@ -2447,10 +2501,23 @@ function EvaluationsView({ employees }: { employees: Employee[] }) {
 
   function createEval() {
     if (!form.title) { toast.error("Título obrigatório"); return; }
-    const e: Evaluation = { ...form, id: nextId(evals), status: "Rascunho", createdAt: new Date().toLocaleDateString("pt-BR"), answers: 0 };
-    setEvals(prev => [...prev, e]);
+    if (editingEval) {
+      setEvals(prev => prev.map(e => e.id === editingEval.id ? { ...e, ...form } : e));
+      setEditingEval(null);
+      toast.success("Avaliação atualizada com sucesso");
+    } else {
+      const e: Evaluation = { ...form, id: nextId(evals), status: "Rascunho", createdAt: new Date().toLocaleDateString("pt-BR"), answers: 0 };
+      setEvals(prev => [...prev, e]);
+      toast.success("Avaliação criada como rascunho");
+    }
     setShowForm(false);
-    toast.success("Avaliação criada como rascunho");
+    setForm({ title: "", type: "360°", period: "", deadline: "", employees: [] });
+  }
+
+  function openEdit(e: Evaluation) {
+    setEditingEval(e);
+    setForm({ title: e.title, type: e.type, period: e.period, deadline: e.deadline, employees: e.employees });
+    setShowForm(true);
   }
 
   function updateStatus(e: Evaluation, status: string) {
@@ -2496,12 +2563,12 @@ function EvaluationsView({ employees }: { employees: Employee[] }) {
 
       <div className="flex items-center justify-between mb-6">
         <div><h1 className="text-2xl font-bold text-slate-900">Avaliações</h1><p className="text-sm text-slate-500 mt-0.5">{evals.length} avaliações</p></div>
-        <button onClick={() => setShowForm(s => !s)} className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}>{showForm ? <X size={15} /> : <Plus size={15} />}{showForm ? "Cancelar" : "Nova Avaliação"}</button>
+        <button onClick={() => { if (showForm) { setShowForm(false); setEditingEval(null); } else { setEditingEval(null); setForm({ title: "", type: "360°", period: "", deadline: "", employees: [] }); setShowForm(true); } }} className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}>{showForm ? <X size={15} /> : <Plus size={15} />}{showForm ? "Cancelar" : "Nova Avaliação"}</button>
       </div>
 
       {showForm && (
         <div className="bg-white rounded-xl border border-slate-100 p-5 mb-4">
-          <h3 className="text-sm font-semibold text-slate-900 mb-4">Criar nova avaliação</h3>
+          <h3 className="text-sm font-semibold text-slate-900 mb-4">{editingEval ? "Editar avaliação" : "Criar nova avaliação"}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div className="sm:col-span-2"><label className="block text-xs font-medium text-slate-600 mb-1">Título *</label><input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Ex: Ciclo Avaliativo Q1 2025" className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30" /></div>
             <div>
@@ -2512,8 +2579,8 @@ function EvaluationsView({ employees }: { employees: Employee[] }) {
             <div><label className="block text-xs font-medium text-slate-600 mb-1">Prazo</label><input type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/30" /></div>
           </div>
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowForm(false)} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
-            <button onClick={createEval} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}>Criar Avaliação</button>
+            <button onClick={() => { setShowForm(false); setEditingEval(null); }} className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
+            <button onClick={createEval} className="px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}>{editingEval ? "Salvar Alterações" : "Criar Avaliação"}</button>
           </div>
         </div>
       )}
@@ -2536,7 +2603,7 @@ function EvaluationsView({ employees }: { employees: Employee[] }) {
                 {e.status !== "Encerrado" && <button onClick={() => setAnswerModal(e)} className="px-3 py-1.5 text-xs border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">Responder</button>}
                 {e.status === "Rascunho" && <button onClick={() => updateStatus(e, "Publicado")} className="px-3 py-1.5 text-xs text-white rounded-lg transition-colors" style={{ background: "#16A34A" }}>Publicar</button>}
                 {e.status === "Publicado" && <button onClick={() => updateStatus(e, "Encerrado")} className="px-3 py-1.5 text-xs border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors">Encerrar</button>}
-                <button onClick={() => toast.info("Edição em desenvolvimento")} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Edit2 size={13} /></button>
+                <button onClick={() => openEdit(e)} title="Editar avaliação" aria-label="Editar avaliação" className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Edit2 size={13} /></button>
                 <button onClick={() => setConfirmDel(e)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 size={13} /></button>
               </div>
             </div>
@@ -3459,17 +3526,28 @@ function RecruitmentView({ vacancies, setVacancies }: { vacancies: RecruitmentVa
 
 // ─── Goals View ───────────────────────────────────────────────────────────────
 function GoalsView({ employees }: { employees: Employee[] }) {
-  const goals = [
+  const [goals, setGoals] = useLocalStorage("goals", [
     { id: 1, title: "Aumentar NPS em 15 pontos", owner: "Rafaela Mendonça", progress: 68, deadline: "Mar 2025", status: "Em andamento" },
     { id: 2, title: "Reduzir turnover para <3%", owner: "Camila Rodrigues", progress: 55, deadline: "Dez 2025", status: "Em andamento" },
     { id: 3, title: "Implementar 360° para todos os gestores", owner: "Carlos Alves", progress: 90, deadline: "Jan 2025", status: "Em andamento" },
     { id: 4, title: "Treinamento de liderança Q1", owner: "Ana Costa", progress: 100, deadline: "Mar 2025", status: "Concluída" },
-  ];
+  ]);
+  const [goalModal, setGoalModal] = useState<typeof goals[number] | null>(null);
+  const [goalTitle, setGoalTitle] = useState("");
+  function openGoal(goal?: typeof goals[number]) { setGoalModal(goal || { id: 0, title: "", owner: employees[0]?.name || "", progress: 0, deadline: "", status: "Em andamento" }); setGoalTitle(goal?.title || ""); }
+  function saveGoal() {
+    if (!goalModal || !goalTitle.trim()) { toast.error("Informe o título da meta"); return; }
+    const nextGoal = { ...goalModal, id: goalModal.id || nextId(goals), title: goalTitle.trim() };
+    setGoals(prev => goalModal.id ? prev.map(g => g.id === goalModal.id ? nextGoal : g) : [...prev, nextGoal]);
+    setGoalModal(null);
+    toast.success(goalModal.id ? "Meta atualizada" : "Meta criada");
+  }
+  function completeGoal(goal: typeof goals[number]) { setGoals(prev => prev.map(g => g.id === goal.id ? { ...g, status: "Concluída", progress: 100 } : g)); toast.success(`Meta "${goal.title}" concluída!`); }
   return (
     <div className="p-6 max-w-[1200px]">
       <div className="flex items-center justify-between mb-6">
         <div><h1 className="text-2xl font-bold text-slate-900">Metas & OKRs</h1><p className="text-sm text-slate-500 mt-0.5">{goals.filter(g => g.status !== "Concluída").length} metas ativas</p></div>
-        <button onClick={() => toast.info("Criando nova meta...")} className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}><Plus size={15} />Nova Meta</button>
+        <button onClick={() => openGoal()} className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}><Plus size={15} />Nova Meta</button>
       </div>
       <div className="space-y-3">
         {goals.map(g => (
@@ -3490,30 +3568,44 @@ function GoalsView({ employees }: { employees: Employee[] }) {
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">
-                <button onClick={() => toast.info(`Editando "${g.title}"`)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Edit2 size={13} /></button>
-                <button onClick={() => toast.success(`Meta "${g.title}" concluída!`)} className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-green-600 hover:bg-green-50 transition-colors"><Check size={13} /></button>
+                <button onClick={() => openGoal(g)} title="Editar meta" aria-label="Editar meta" className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Edit2 size={13} /></button>
+                <button onClick={() => completeGoal(g)} disabled={g.status === "Concluída"} title="Concluir meta" aria-label="Concluir meta" className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-green-600 hover:bg-green-50 transition-colors disabled:opacity-40"><Check size={13} /></button>
               </div>
             </div>
           </div>
         ))}
       </div>
+      <Modal open={!!goalModal} title={goalModal?.id ? "Editar meta" : "Nova meta"} onClose={() => setGoalModal(null)}>
+        <div className="space-y-4"><div><label className="mb-1 block text-xs font-medium text-slate-600">Título *</label><input value={goalTitle} onChange={e => setGoalTitle(e.target.value)} placeholder="Ex.: Aumentar o NPS" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" /></div><div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => setGoalModal(null)}>Cancelar</Button><Button onClick={saveGoal}>Salvar</Button></div></div>
+      </Modal>
     </div>
   );
 }
 
 // ─── Training View ────────────────────────────────────────────────────────────
 function TrainingView() {
-  const trainings = [
+  const [trainings, setTrainings] = useLocalStorage("trainings", [
     { id: 1, title: "Cloud Architecture — AWS", instructor: "AWS Academy", enrolled: 12, completed: 8, duration: "40h", status: "Ativo" },
     { id: 2, title: "Leadership Foundations", instructor: "FDC", enrolled: 24, completed: 18, duration: "20h", status: "Ativo" },
     { id: 3, title: "Agile & Scrum Practitioner", instructor: "Scrum Alliance", enrolled: 30, completed: 30, duration: "16h", status: "Concluído" },
     { id: 4, title: "LGPD na Prática", instructor: "ANPD", enrolled: 45, completed: 10, duration: "8h", status: "Ativo" },
-  ];
+  ]);
+  const [selectedTraining, setSelectedTraining] = useState<typeof trainings[number] | null>(null);
+  const [showNewTraining, setShowNewTraining] = useState(false);
+  const [trainingTitle, setTrainingTitle] = useState("");
+  function createTraining() {
+    if (!trainingTitle.trim()) { toast.error("Informe o nome do treinamento"); return; }
+    setTrainings(prev => [...prev, { id: nextId(prev), title: trainingTitle.trim(), instructor: "A definir", enrolled: 0, completed: 0, duration: "0h", status: "Ativo" }]);
+    setTrainingTitle("");
+    setShowNewTraining(false);
+    toast.success("Treinamento criado");
+  }
+  function enroll(training: typeof trainings[number]) { setTrainings(prev => prev.map(t => t.id === training.id ? { ...t, enrolled: t.enrolled + 1 } : t)); toast.success(`Inscrição realizada em ${training.title}`); }
   return (
     <div className="p-6 max-w-[1200px]">
       <div className="flex items-center justify-between mb-6">
         <div><h1 className="text-2xl font-bold text-slate-900">Treinamentos</h1><p className="text-sm text-slate-500 mt-0.5">{trainings.filter(t => t.status === "Ativo").length} ativos</p></div>
-        <button onClick={() => toast.info("Criando novo treinamento...")} className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}><Plus size={15} />Novo Treinamento</button>
+        <button onClick={() => setShowNewTraining(true)} className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-lg" style={{ background: "#2563EB" }}><Plus size={15} />Novo Treinamento</button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {trainings.map(t => (
@@ -3531,12 +3623,18 @@ function TrainingView() {
               <span className="text-xs text-slate-500">{t.completed}/{t.enrolled}</span>
             </div>
             <div className="flex gap-2 mt-3">
-              <button onClick={() => toast.info(`Acessando ${t.title}`)} className="flex-1 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">Ver detalhes</button>
-              {t.status === "Ativo" && <button onClick={() => toast.success(`Inscrito em ${t.title}`)} className="flex-1 py-1.5 text-xs text-white rounded-lg transition-colors" style={{ background: "#2563EB" }}>Inscrever-se</button>}
+              <button onClick={() => setSelectedTraining(t)} className="flex-1 py-1.5 text-xs border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors">Ver detalhes</button>
+              {t.status === "Ativo" && <button onClick={() => enroll(t)} className="flex-1 py-1.5 text-xs text-white rounded-lg transition-colors" style={{ background: "#2563EB" }}>Inscrever-se</button>}
             </div>
           </div>
         ))}
       </div>
+      <Modal open={showNewTraining} title="Novo treinamento" onClose={() => setShowNewTraining(false)}>
+        <div className="space-y-4"><div><label className="mb-1 block text-xs font-medium text-slate-600">Nome do treinamento *</label><input value={trainingTitle} onChange={e => setTrainingTitle(e.target.value)} placeholder="Ex.: Liderança para gestores" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" /></div><div className="flex justify-end gap-2"><Button variant="secondary" onClick={() => setShowNewTraining(false)}>Cancelar</Button><Button onClick={createTraining}>Criar treinamento</Button></div></div>
+      </Modal>
+      <Modal open={!!selectedTraining} title={selectedTraining?.title || "Treinamento"} onClose={() => setSelectedTraining(null)}>
+        <div className="space-y-3 text-sm text-slate-600"><p><strong className="text-slate-800">Instrutor:</strong> {selectedTraining?.instructor}</p><p><strong className="text-slate-800">Duração:</strong> {selectedTraining?.duration}</p><p><strong className="text-slate-800">Participantes:</strong> {selectedTraining?.enrolled}</p><div className="flex justify-end"><Button variant="secondary" onClick={() => setSelectedTraining(null)}>Fechar</Button></div></div>
+      </Modal>
     </div>
   );
 }
@@ -3650,6 +3748,39 @@ function OrgChartView({ employees }: { employees: Employee[] }) {
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
+function VirtualAssistant({ context, dark }: { context: AssistantContext; dark: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState<{ from: "bot" | "user"; text: string }[]>(() => {
+    try {
+      const saved = sessionStorage.getItem("talentflow-assistant-history");
+      return saved ? JSON.parse(saved) : [{ from: "bot", text: "Olá! Sou a Assistente TalentFlow. Posso explicar cada área, indicar menus e orientar seus próximos passos." }];
+    } catch { return [{ from: "bot", text: "Olá! Sou a Assistente TalentFlow. Como posso ajudar?" }]; }
+  });
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { sessionStorage.setItem("talentflow-assistant-history", JSON.stringify(messages)); }, [messages]);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); }, [messages, open]);
+  function send(text = message) {
+    const content = text.trim();
+    if (!content) return;
+    setMessages(prev => [...prev, { from: "user", text: content }, { from: "bot", text: getTalentFlowAnswer(content, context) }]);
+    setMessage("");
+  }
+  const quickQuestions = context.activeModule === "dashboard" ? QUICK_ASSISTANT_QUESTIONS : ["Para que serve esse botão?", `Como usar ${context.activeLabel}?`, "Quais erros comuns posso evitar?"];
+  const panel = dark ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-white";
+  const chatArea = dark ? "bg-slate-950" : "bg-slate-50";
+  const botBubble = dark ? "bg-slate-800 text-slate-200 shadow-none" : "bg-white text-slate-600 shadow-sm";
+  const input = dark ? "border-slate-700 bg-slate-800 text-white placeholder:text-slate-400" : "border-slate-200 bg-white text-slate-700";
+  return <div className="fixed bottom-5 right-5 z-50">
+    {open && <div className={`mb-3 flex w-[calc(100vw-2.5rem)] max-w-md flex-col overflow-hidden rounded-2xl border shadow-2xl shadow-slate-900/20 ${panel}`}>
+      <div className="flex items-center justify-between bg-slate-950 px-4 py-3 text-white"><div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500"><Bot size={17} /></span><div><p className="text-sm font-semibold">Assistente TalentFlow</p><p className="text-[11px] text-slate-300">Online para ajudar</p></div></div><button onClick={() => setOpen(false)} aria-label="Fechar assistente" className="rounded-md p-1 text-slate-300 hover:bg-white/10 hover:text-white"><X size={17} /></button></div>
+      <div ref={scrollRef} className={`max-h-80 space-y-3 overflow-y-auto p-4 ${chatArea}`}>{messages.map((item, index) => <div key={index} className={`whitespace-pre-line rounded-xl px-3 py-2 text-xs leading-5 ${item.from === "bot" ? `max-w-[92%] ${botBubble}` : "ml-auto max-w-[88%] bg-blue-600 text-white"}`}>{item.text}</div>)}</div>
+      <div className={`border-t p-3 ${dark ? "border-slate-700 bg-slate-900" : "border-slate-100 bg-white"}`}><p className={`mb-2 text-[10px] font-semibold uppercase tracking-wide ${dark ? "text-slate-400" : "text-slate-500"}`}>Ajuda rápida</p><div className="mb-2 flex flex-wrap gap-1.5">{quickQuestions.map(question => <button key={question} onClick={() => send(question)} className="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700 hover:bg-blue-100">{question}</button>)}</div><div className="flex gap-2"><input value={message} onChange={e => setMessage(e.target.value)} onKeyDown={e => { if (e.key === "Enter") send(); }} placeholder="Digite sua dúvida sobre o TalentFlow..." className={`h-9 min-w-0 flex-1 rounded-lg border px-3 text-xs outline-none focus:ring-2 focus:ring-blue-500/20 ${input}`} /><button onClick={() => send()} aria-label="Enviar mensagem" className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white hover:bg-blue-700"><Send size={15} /></button></div></div>
+    </div>}
+    <button onClick={() => setOpen(!open)} aria-label="Abrir assistente virtual" className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/35 transition-transform hover:scale-105 hover:bg-blue-700"><Bot size={24} /></button>
+  </div>;
+}
+
 export default function App() {
   const [authed, setAuthed] = useLocalStorage<{ name: string; role: string; email: string } | null>("auth", null);
   const [active, setActive] = useState("dashboard");
@@ -3755,6 +3886,12 @@ export default function App() {
     );
   }
 
+  const currentAssistantModule = showNewForm ? "employees" : ["kanban", "training", "certificates", "orgchart"].includes(active) ? "processes" : active;
+  const assistantContext: AssistantContext = {
+    activeModule: currentAssistantModule,
+    activeLabel: navItems.find(item => item.id === (showNewForm ? "employees" : active))?.label || "esta página",
+  };
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: "#F8FAFC", fontFamily: "'Inter', system-ui, sans-serif" }}>
       <Toaster richColors position="top-right" />
@@ -3765,6 +3902,7 @@ export default function App() {
           {renderMain()}
         </main>
       </div>
+      <VirtualAssistant context={assistantContext} dark={dark} />
     </div>
   );
 }
